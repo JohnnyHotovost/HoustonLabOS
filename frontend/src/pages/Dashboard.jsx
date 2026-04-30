@@ -5,6 +5,7 @@ import { fmtMoney, fmtRelative } from "../lib/format";
 import { useT } from "../i18n/I18nContext";
 import { StatusBadge, PriorityBadge } from "../components/houston/Badges";
 import RangePicker, { rangeParams, formatBucketLabel } from "../components/houston/RangePicker";
+import SecurityCard from "../components/houston/SecurityCard";
 import { Briefcase, CheckCircle2, AlertCircle, Wallet, ArrowUpRight, Calendar, Activity, Plus, Cpu, Users } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Skeleton } from "../components/ui/skeleton";
@@ -154,6 +155,9 @@ export default function Dashboard() {
                     </div>
                 </div>
             </div>
+
+            {/* Security overview (last 24h) */}
+            <SecurityCard />
 
             {/* Upcoming + Status breakdown */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">

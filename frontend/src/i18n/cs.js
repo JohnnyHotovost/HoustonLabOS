@@ -393,6 +393,7 @@ const cs = {
     "audit.events.secret.created": "Heslo vytvořeno",
     "audit.events.secret.revealed": "Heslo odhaleno",
     "audit.events.secret.reveal_denied": "Odhalení odepřeno",
+    "audit.events.secret.copied": "Heslo zkopírováno",
     "audit.events.secret.deleted": "Heslo smazáno",
     "audit.events.attachment.uploaded": "Soubor nahrán",
     "audit.events.attachment.deleted": "Soubor smazán",
@@ -401,6 +402,17 @@ const cs = {
     "audit.events.client.deleted": "Klient smazán",
     "audit.events.device.deleted": "Zařízení smazáno",
     "audit.events.settings.updated": "Nastavení upraveno",
+
+    // dashboard security card
+    "dashboard.security.title": "Bezpečnost · Posledních 24h",
+    "dashboard.security.view_log": "Otevřít audit log",
+    "dashboard.security.calm": "Žádná neobvyklá aktivita za posledních 24 h.",
+    "dashboard.security.kpi.login_success": "Přihlášení",
+    "dashboard.security.kpi.login_failed": "Neúspěšná přihlášení",
+    "dashboard.security.kpi.secret_revealed": "Hesla odhalena",
+    "dashboard.security.kpi.file_viewed": "Soubory zobrazeny",
+    "dashboard.security.kpi.deletions": "Smazání",
+    "dashboard.security.kpi.reveal_denied": "Odhalení odepřeno",
 };
 
 export default cs;

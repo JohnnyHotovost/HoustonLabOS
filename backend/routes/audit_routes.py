@@ -87,3 +87,50 @@ async def audit_meta():
     usernames = await db.audit_log.distinct("username")
     users = [{"username": u} for u in sorted(u for u in usernames if u)]
     return {"events": sorted(e for e in events if e), "users": users}
+
+
+@router.get("/summary")
+async def audit_summary(
+    range: Optional[str] = Query("day", alias="range"),
+    from_: Optional[str] = Query(None, alias="from"),
+    to: Optional[str] = Query(None),
+):
+    """Compact security overview — counts per event family for the given range.
+    Designed for the Dashboard security card; defaults to last 24h."""
+    from server import db
+    start, end = _range_bounds(range, from_, to)
+    match: dict = {}
+    if start or end:
+        time_q = {}
+        if start:
+            time_q["$gte"] = start.isoformat()
+        if end:
+            time_q["$lte"] = end.isoformat()
+        match["created_at"] = time_q
+
+    pipeline = [
+        {"$match": match} if match else {"$match": {}},
+        {"$group": {"_id": "$event", "count": {"$sum": 1}}},
+    ]
+    rows = await db.audit_log.aggregate(pipeline).to_list(200)
+    counts = {r["_id"]: r["count"] for r in rows if r["_id"]}
+
+    deletions = sum(counts.get(k, 0) for k in ("job.deleted", "client.deleted", "device.deleted"))
+    return {
+        "range": {"key": range, "from": start.isoformat() if start else None, "to": end.isoformat() if end else None},
+        "counts": {
+            "login_success": counts.get("login.success", 0),
+            "login_failed": counts.get("login.failed", 0),
+            "secret_revealed": counts.get("secret.revealed", 0),
+            "secret_reveal_denied": counts.get("secret.reveal_denied", 0),
+            "secret_copied": counts.get("secret.copied", 0),
+            "secret_created": counts.get("secret.created", 0),
+            "secret_deleted": counts.get("secret.deleted", 0),
+            "file_viewed": counts.get("file.viewed", 0),
+            "file_uploaded": counts.get("attachment.uploaded", 0),
+            "file_deleted": counts.get("attachment.deleted", 0),
+            "deletions": deletions,
+            "settings_updated": counts.get("settings.updated", 0),
+        },
+        "raw": counts,
+    }

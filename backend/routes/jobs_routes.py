@@ -237,3 +237,18 @@ async def delete_secret(job_id: str, secret_id: str, request: Request, user: dic
                     entity_type="secret", entity_id=secret_id,
                     ip=client_ip(request), user_agent=user_agent(request), meta={"job_id": job_id})
     return {"ok": True}
+
+
+@router.post("/{job_id}/secrets/{secret_id}/copied")
+async def log_secret_copied(job_id: str, secret_id: str, request: Request, user: dict = Depends(get_current_user)):
+    """Audit-only — fired when the operator copies a revealed secret to clipboard.
+    Stores label + entity ids only; never the value."""
+    from server import db
+    j = await db.jobs.find_one({"id": job_id, "secrets.id": secret_id}, {"_id": 0, "secrets.$": 1})
+    if not j or not j.get("secrets"):
+        raise HTTPException(404, "Secret not found")
+    label = j["secrets"][0].get("label")
+    await log_event(db, event="secret.copied", user_id=user["id"], username=user["username"],
+                    entity_type="secret", entity_id=secret_id, entity_label=label,
+                    ip=client_ip(request), user_agent=user_agent(request), meta={"job_id": job_id})
+    return {"ok": True}

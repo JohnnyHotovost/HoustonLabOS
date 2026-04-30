@@ -22,6 +22,7 @@ const EVENT_META = {
     "secret.created":       { icon: KeyRound,      tone: "emerald" },
     "secret.revealed":      { icon: Eye,           tone: "amber" },
     "secret.reveal_denied": { icon: ShieldX,       tone: "red" },
+    "secret.copied":        { icon: KeyRound,      tone: "amber" },
     "secret.deleted":       { icon: Trash2,        tone: "red" },
     "attachment.uploaded":  { icon: Upload,        tone: "cyan" },
     "attachment.deleted":   { icon: Trash2,        tone: "red" },

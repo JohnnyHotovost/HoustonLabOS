@@ -544,6 +544,8 @@ function SecretsTab({ job, reload }) {
         await navigator.clipboard.writeText(text);
         setCopied(id);
         setTimeout(() => setCopied(null), 1500);
+        // Audit-only signal — value never leaves the client.
+        try { await api.post(`/jobs/${job.id}/secrets/${id}/copied`); } catch { /* noop */ }
     };
 
     const remove = async (sid) => {

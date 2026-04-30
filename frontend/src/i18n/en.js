@@ -393,6 +393,7 @@ const en = {
     "audit.events.secret.created": "Secret created",
     "audit.events.secret.revealed": "Secret revealed",
     "audit.events.secret.reveal_denied": "Secret reveal denied",
+    "audit.events.secret.copied": "Secret copied",
     "audit.events.secret.deleted": "Secret deleted",
     "audit.events.attachment.uploaded": "File uploaded",
     "audit.events.attachment.deleted": "File deleted",
@@ -401,6 +402,17 @@ const en = {
     "audit.events.client.deleted": "Client deleted",
     "audit.events.device.deleted": "Device deleted",
     "audit.events.settings.updated": "Settings updated",
+
+    // dashboard security card
+    "dashboard.security.title": "Security · Last 24h",
+    "dashboard.security.view_log": "View audit log",
+    "dashboard.security.calm": "No unusual activity in the last 24h.",
+    "dashboard.security.kpi.login_success": "Sign-ins",
+    "dashboard.security.kpi.login_failed": "Failed logins",
+    "dashboard.security.kpi.secret_revealed": "Secrets revealed",
+    "dashboard.security.kpi.file_viewed": "Files viewed",
+    "dashboard.security.kpi.deletions": "Deletions",
+    "dashboard.security.kpi.reveal_denied": "Reveal denied",
 };
 
 export default en;
