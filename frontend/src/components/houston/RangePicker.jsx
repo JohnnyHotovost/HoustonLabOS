@@ -7,7 +7,7 @@ import { Button } from "../ui/button";
 import { Label } from "../ui/label";
 import { Calendar } from "lucide-react";
 
-export const RANGE_KEYS = ["today", "week", "month", "year", "6m", "all", "custom"];
+export const RANGE_KEYS = ["today", "week", "month", "6m", "year", "all", "custom"];
 
 /**
  * Date-range selector wired to backend `?range=` (and optional from/to for custom).

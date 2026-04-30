@@ -1,4 +1,4 @@
-import { LayoutGrid, Briefcase, Users, Cpu, Wallet, FileCode2, Settings as SettingsIcon, LogOut, Search, Plus, Command, ZapIcon } from "lucide-react";
+import { LayoutGrid, Briefcase, Users, Cpu, Wallet, FileCode2, Settings as SettingsIcon, ShieldCheck, LogOut, Search, Plus, Command, ZapIcon } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useT } from "../../i18n/I18nContext";
@@ -15,6 +15,7 @@ const NAV_KEYS = [
     { to: "/devices", key: "nav.devices", icon: Cpu, testKey: "devices" },
     { to: "/finance", key: "nav.finance", icon: Wallet, testKey: "finance" },
     { to: "/templates", key: "nav.templates", icon: FileCode2, testKey: "templates" },
+    { to: "/audit", key: "nav.audit", icon: ShieldCheck, testKey: "audit" },
     { to: "/settings", key: "nav.settings", icon: SettingsIcon, testKey: "settings" },
 ];
 

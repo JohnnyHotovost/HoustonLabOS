@@ -116,6 +116,13 @@ export default function Dashboard() {
                                     contentStyle={{ background: "#121215", border: "1px solid #27272a", borderRadius: 10, fontSize: 12 }}
                                     labelStyle={{ color: "#a1a1aa" }}
                                     cursor={{ fill: "rgba(52,211,153,0.06)" }}
+                                    isAnimationActive={false}
+                                    content={(p) => (p?.active && p?.payload?.length ? (
+                                        <div style={{ background: "#121215", border: "1px solid #27272a", borderRadius: 10, fontSize: 12, padding: "6px 10px" }}>
+                                            <div style={{ color: "#a1a1aa", marginBottom: 2 }}>{p.label}</div>
+                                            <div style={{ color: "#34d399" }}>{p.payload[0].value?.toLocaleString?.("cs-CZ") ?? p.payload[0].value} CZK</div>
+                                        </div>
+                                    ) : null)}
                                 />
                                 <Area type="monotone" dataKey="revenue" stroke="#34d399" strokeWidth={2} fill="url(#rev)" />
                             </AreaChart>

@@ -17,6 +17,7 @@ import DeviceDetail from "./pages/DeviceDetail";
 import FinancePage from "./pages/Finance";
 import TemplatesPage from "./pages/Templates";
 import SettingsPage from "./pages/Settings";
+import AuditLog from "./pages/AuditLog";
 import AppShell from "./components/houston/AppShell";
 
 function ProtectedShell() {
@@ -56,6 +57,7 @@ export default function App() {
                         <Route path="/devices/:id/edit" element={<DeviceDetail mode="edit" />} />
                         <Route path="/finance" element={<FinancePage />} />
                         <Route path="/templates" element={<TemplatesPage />} />
+                        <Route path="/audit" element={<AuditLog />} />
                         <Route path="/settings" element={<SettingsPage />} />
                     </Route>
                     <Route path="*" element={<Navigate to="/" replace />} />

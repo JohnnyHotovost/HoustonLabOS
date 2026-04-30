@@ -154,7 +154,7 @@ async def _find_attachment(db, attachment_id: str) -> dict | None:
 
 
 @files_router.get("/{attachment_id}", dependencies=[Depends(get_current_user)])
-async def serve_file(attachment_id: str):
+async def serve_file(attachment_id: str, request: Request, user: dict = Depends(get_current_user)):
     from server import db
     att = await _find_attachment(db, attachment_id)
     if not att:
@@ -166,6 +166,11 @@ async def serve_file(attachment_id: str):
     target = (UPLOAD_DIR / fname).resolve()
     if target.parent != UPLOAD_DIR or not target.exists():
         raise HTTPException(status_code=404, detail="File not found")
+    await log_event(db, event="file.viewed", user_id=user["id"], username=user["username"],
+                    entity_type="attachment", entity_id=attachment_id,
+                    entity_label=att.get("original_name"),
+                    ip=client_ip(request), user_agent=user_agent(request),
+                    meta={"mime": att.get("mime"), "size": att.get("size")})
     return FileResponse(
         path=str(target),
         media_type=att.get("mime") or "application/octet-stream",

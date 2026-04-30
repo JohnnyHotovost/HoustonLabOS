@@ -1,0 +1,38 @@
+{
+  "summary": "Iteration 4 — Validated new Audit Log feature end-to-end: backend filters (event/user/q/range/from/to), /audit/meta, file.viewed on GET /api/files/{id}, Audit Log frontend page rendering + filters, range-option ORDER on Dashboard/Finance/Audit, and Recharts initial-tooltip suppression on Dashboard+Finance. Backend regression 40/40 PASS; 6 new audit tests 6/6 PASS.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/audit/meta", "issue": "Returns duplicate (user_id, username) pairs when the same username has multiple distinct user_id values historically; causes React 'duplicate key admin' console warning on the audit user filter. Recommend either $group by username only, or frontend should dedupe / use key={u.user_id||u.username}."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/backend/tests/test_audit_new.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "(minor) Dedupe users in /api/audit/meta (group by username) OR change AuditLog.jsx SelectItem key to u.user_id||u.username to remove the React duplicate-key console warning."
+  ],
+  "critical_code_review_comments": [
+    "AuditLog.jsx user Select uses `key={u.username}` but /audit/meta can return multiple entries for the same username (distinct user_id + username pairs) → React duplicate-key warning. Safe fix either side.",
+    "audit_routes.py `_range_bounds` duplicates the semantics already present in dashboard_routes — worth extracting to a single shared util (DRY) so future range changes apply everywhere.",
+    "Carry-over from iter 1/2/3 still open: CORS allow_origins=['*'] with allow_credentials=True (invalid per spec); @app.on_event lifecycle deprecated in favour of FastAPI lifespan; /api/auth/change-password blocks new_password==DEFAULT_ADMIN_PASSWORD globally (should be scoped to seeded admin account only).",
+    "RangePicker.jsx 50ms setTimeout deferring Dialog open is still a magic number — consider chaining off Select's onCloseAutoFocus for deterministic handoff."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_audit_new.py (NEW — 6 tests: /audit/meta shape, event filter, q filter, range today-vs-all, custom range, file.viewed roundtrip)"
+  ],
+  "success_rate": {"backend": "100% (46/46 — 40 regression + 6 new audit)", "frontend": "100% on audit scope; range-order verified on Dashboard+Finance+Audit; initial-tooltip suppressed on Dashboard+Finance"},
+  "test_credentials": "admin / ChangeMe123! — still valid post pytest (backend_test restores via direct DB write).",
+  "seed_data_creation": "Each test_file_viewed_audit_event run creates 1 attachment (TEST_audit_view.txt) and cleans it up via DELETE /api/uploads/{id}. Audit rows for that event remain (read-only log).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Audit feature is production-ready. Range-option DOM order everywhere: today,week,month,6m,year,all,custom. Dashboard+Finance tooltip wrapper is rendered but visibility:hidden with 0x0 size and empty innerHTML on initial mount — verified via getComputedStyle + getBoundingClientRect (screenshots fine, no visible popup). Only residual is the React duplicate-key console warning on the audit user filter — minor. Login/must-change banner/custom-range dialog all continue to work as in iter 3.",
+  "rca of the issue": "N/A — no failing flows this iteration. Note on the 'duplicate key admin' warning: /api/audit/meta aggregates by {user_id, username} to preserve user identity, but admin events from before user_id was attached (or from different admin records) produce multiple {user_id_a, 'admin'}, {user_id_b, 'admin'} tuples. Either collapse to distinct username on the server or key on user_id||username on the client."
+}
