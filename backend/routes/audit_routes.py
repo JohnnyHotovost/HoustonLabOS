@@ -84,13 +84,6 @@ async def audit_meta():
     """Distinct events + users for filter dropdowns."""
     from server import db
     events = await db.audit_log.distinct("event")
-    user_pairs = await db.audit_log.aggregate([
-        {"$match": {"username": {"$ne": None}}},
-        {"$group": {"_id": {"user_id": "$user_id", "username": "$username"}}},
-        {"$limit": 100},
-    ]).to_list(100)
-    users = [
-        {"user_id": p["_id"].get("user_id"), "username": p["_id"].get("username")}
-        for p in user_pairs if p["_id"].get("username")
-    ]
+    usernames = await db.audit_log.distinct("username")
+    users = [{"username": u} for u in sorted(u for u in usernames if u)]
     return {"events": sorted(e for e in events if e), "users": users}

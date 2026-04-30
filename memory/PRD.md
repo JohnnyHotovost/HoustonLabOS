@@ -37,30 +37,37 @@ Build a premium full-stack web application called **HoustonLab OS** — a privat
 
 ### Frontend refinements (iteration 2/3 — April 30, 2026)
 - **Login polish**: image blur reduced (26 px → 8 px), removed "Access Required" emblem, "Secured Perimeter" badge, and the default-admin credentials block. Replaced with a neutral admin-tip line.
-- **Dashboard date range selector** (`Today / This week / This month / This year / Last 6 months / All time / Custom`) — defaults to Last 6 months. Wired to the new `?range=` and `?from=&to=` backend params; chart uses `series` with adaptive bucket granularity (day/week/month).
+- **Dashboard date range selector** (`Today / This week / This month / Last 6 months / This year / All time / Custom`) — defaults to Last 6 months. Wired to the new `?range=` and `?from=&to=` backend params; chart uses `series` with adaptive bucket granularity (day/week/month).
 - **Finance date range selector** — same component, defaults to This month.
 - **Custom-range dialog** — shadcn `Dialog` (with a 50 ms defer past Radix Select portal unmount) for from/to date entry.
 - **Auth-protected file delivery** — new `<AuthImage>` (axios-blob fetch) for the gallery; new `downloadFile(url, name)` helper for the Files tab.
 - **Force-password-change UI** — sticky red banner across the app while `must_change_password=true`, plus highlighted notice + auto-scroll on `/settings#change-password`.
+
+### Audit Log viewer + polish (iteration 4 — April 30, 2026)
+- **Read-only Audit Log page** at `/audit` (sidebar nav item) — table with timestamp + relative time, event badge (icon + tone per event family), user, entity, IP, user-agent (truncated), meta pills (size/mime/job_id/fields).
+- **Filters**: RangePicker (defaults to This month), event-type Select (populated from `/api/audit/meta`), user Select, free-text search (regex across username/entity_label/entity_id/event/ip).
+- **Backend extensions**: `/api/audit` accepts `event`, `username`, `q`, `range`, `from`, `to`, `limit` (max 1000). New `/api/audit/meta` returns distinct events + usernames for filter dropdowns.
+- **`file.viewed` audit event** added on every authenticated `GET /api/files/{id}` so file access is now part of the audit trail.
+- **Range option order** unified everywhere: Today → This week → This month → Last 6 months → This year → All time → Custom (and matching Czech labels).
+- **Recharts initial-tooltip fix**: custom Tooltip content returns `null` when `active` is false on Dashboard + Finance charts — no more popup on initial mount.
 
 ## Backend response shape (current)
 - `GET /api/dashboard/stats?range=...` → `{ counts, revenue:{range,total,currency}, range:{key,from,to,granularity}, series:[{bucket,revenue}], by_status, by_category, recent_activity, recent_clients, recent_devices, upcoming }`
 - `GET /api/dashboard/finance?range=...` → `{ total_revenue, unpaid_total, paid_count, unpaid_count, avg_job_value, by_category, series:[{bucket,revenue}], unpaid_jobs, paid_jobs, range, currency }`
 
 ## Testing
-- `/app/backend/tests/backend_test.py` — 40 pytest tests, 100% pass (auth, jobs CRUD, secrets reveal/audit, attachments, dashboard range/custom, search, settings).
-- Iterations: `/app/test_reports/iteration_1.json` (MVP), `iteration_2.json` (security + frontend), `iteration_3.json` (custom-range fix verified).
+- `/app/backend/tests/backend_test.py` + `/app/backend/tests/test_audit_new.py` — 46 pytest tests, 100% pass.
+- Iterations: `/app/test_reports/iteration_1.json` (MVP), `iteration_2.json` (security + frontend), `iteration_3.json` (custom-range fix verified), `iteration_4.json` (audit log + range order + tooltip fix).
 
 ## Backlog (P1)
-- Audit-log viewer UI (read-only `/api/audit` already exists).
 - Photo before/after comparison slider in gallery.
 - Bulk actions in jobs list (set status, archive).
 - Export client report PDF.
 - Custom template editor (currently fields/checklist editable only via API).
 - Webhooks/notifications (email or telegram on job status change).
-- Recharts: suppress initial active tooltip on Dashboard/Finance charts on first render.
 - Migrate `@app.on_event` to FastAPI lifespan.
 - Restrict CORS allow_origins to explicit list when credentials are enabled.
+- Track `secret.copied` audit events from the frontend for full sensitivity history.
 
 ## Backlog (P2)
 - Multi-user support with roles (technician/admin).
