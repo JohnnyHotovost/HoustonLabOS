@@ -1,34 +1,43 @@
-.App-logo {
-    height: 40vmin;
-    pointer-events: none;
-}
+/* App-level styles for HoustonLab OS */
+.App { min-height: 100vh; }
 
-@media (prefers-reduced-motion: no-preference) {
-    .App-logo {
-        animation: App-logo-spin infinite 20s linear;
-    }
-}
-
-.App-header {
-    background-color: #0f0f10;
-    min-height: 100vh;
+.sidebar-link {
     display: flex;
-    flex-direction: column;
     align-items: center;
-    justify-content: center;
-    font-size: calc(10px + 2vmin);
-    color: white;
+    gap: 0.75rem;
+    padding: 0.55rem 0.85rem;
+    border-radius: 0.55rem;
+    color: var(--hl-text-muted);
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: background-color 160ms ease, color 160ms ease;
+    cursor: pointer;
+}
+.sidebar-link:hover { background: rgba(255,255,255,0.03); color: var(--hl-text); }
+.sidebar-link.active {
+    background: var(--hl-elevated);
+    color: var(--hl-text);
+    box-shadow: inset 0 0 0 1px var(--hl-border);
+}
+.sidebar-link.active .icon-wrap { color: var(--hl-accent); }
+
+.kpi-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--hl-text-dim);
+}
+.kpi-value {
+    font-size: 2rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--hl-text);
 }
 
-.App-link {
-    color: #61dafb;
-}
+.timeline-line { background: var(--hl-border); width: 2px; }
 
-@keyframes App-logo-spin {
-    from {
-        transform: rotate(0deg);
-    }
-    to {
-        transform: rotate(360deg);
-    }
+.tab-pill[data-state="active"] {
+    background-color: var(--hl-elevated) !important;
+    color: var(--hl-text) !important;
 }

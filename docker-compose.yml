@@ -1,0 +1,48 @@
+version: "3.9"
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - mongo_data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: houstonlab_os
+    networks: [houstonlab]
+
+  backend:
+    build: { context: ./backend, dockerfile: Dockerfile }
+    restart: unless-stopped
+    environment:
+      MONGO_URL: "mongodb://mongo:27017"
+      DB_NAME: "houstonlab_os"
+      CORS_ORIGINS: "*"
+      JWT_SECRET: "${JWT_SECRET}"
+      ENCRYPTION_KEY: "${ENCRYPTION_KEY}"
+      ADMIN_USERNAME: "${ADMIN_USERNAME:-admin}"
+      ADMIN_EMAIL: "${ADMIN_EMAIL:-admin@houstonlab.local}"
+      ADMIN_PASSWORD: "${ADMIN_PASSWORD:-ChangeMe123!}"
+      UPLOAD_DIR: "/data/uploads"
+      FRONTEND_URL: "${FRONTEND_URL:-http://localhost:3000}"
+    volumes:
+      # ---- Persistent uploads. Survives container rebuild/redeploy. ----
+      - ./data/uploads:/data/uploads
+    depends_on: [mongo]
+    ports: ["8001:8001"]
+    networks: [houstonlab]
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        REACT_APP_BACKEND_URL: "${REACT_APP_BACKEND_URL:-http://localhost:8001}"
+    restart: unless-stopped
+    ports: ["3000:80"]
+    depends_on: [backend]
+    networks: [houstonlab]
+
+volumes:
+  mongo_data:
+
+networks:
+  houstonlab: {}
