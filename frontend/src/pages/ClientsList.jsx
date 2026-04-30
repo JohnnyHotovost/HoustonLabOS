@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import api from "../lib/api";
+import { useT } from "../i18n/I18nContext";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { fmtMoney, fmtRelative } from "../lib/format";
@@ -11,6 +12,7 @@ export default function ClientsList() {
     const [clients, setClients] = useState(null);
     const [q, setQ] = useState("");
     const navigate = useNavigate();
+    const t = useT();
     useEffect(() => { (async () => { const { data } = await api.get("/clients"); setClients(data); })(); }, []);
 
     const filtered = (clients || []).filter((c) => {
@@ -23,22 +25,22 @@ export default function ClientsList() {
         <div className="space-y-6 hl-fade-up">
             <div className="flex items-end justify-between flex-wrap gap-4">
                 <div>
-                    <div className="hl-mono text-[10px] uppercase tracking-widest text-emerald-400/80 mb-1.5">// People</div>
-                    <h1 className="text-3xl font-semibold tracking-tight text-white">Clients</h1>
-                    <p className="text-sm text-zinc-500 mt-1">{clients?.length || 0} customers in the database.</p>
+                    <div className="hl-mono text-[10px] uppercase tracking-widest text-emerald-400/80 mb-1.5">{t("clients.kicker")}</div>
+                    <h1 className="text-3xl font-semibold tracking-tight text-white">{t("clients.title")}</h1>
+                    <p className="text-sm text-zinc-500 mt-1">{t("clients.subtitle", { count: clients?.length || 0 })}</p>
                 </div>
-                <Button data-testid="clients-new-btn" onClick={() => navigate("/clients/new")} className="bg-emerald-500 hover:bg-emerald-400 text-zinc-950"><Plus className="h-4 w-4 mr-2" />New Client</Button>
+                <Button data-testid="clients-new-btn" onClick={() => navigate("/clients/new")} className="bg-emerald-500 hover:bg-emerald-400 text-zinc-950"><Plus className="h-4 w-4 mr-2" />{t("clients.new")}</Button>
             </div>
 
             <div className="hl-card p-4">
                 <div className="relative max-w-md">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
-                    <Input data-testid="clients-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, email, phone…" className="pl-9 bg-[var(--hl-input)] border-[var(--hl-border)]" />
+                    <Input data-testid="clients-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("clients.search_placeholder")} className="pl-9 bg-[var(--hl-input)] border-[var(--hl-border)]" />
                 </div>
             </div>
 
             {clients && filtered.length === 0 ? (
-                <EmptyState icon={Users} title="No clients" action={<Button onClick={() => navigate("/clients/new")} className="bg-emerald-500 hover:bg-emerald-400 text-zinc-950"><Plus className="h-4 w-4 mr-2" />New Client</Button>} />
+                <EmptyState icon={Users} title={t("clients.empty_title")} action={<Button onClick={() => navigate("/clients/new")} className="bg-emerald-500 hover:bg-emerald-400 text-zinc-950"><Plus className="h-4 w-4 mr-2" />{t("clients.new")}</Button>} />
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {filtered.map((c) => (
@@ -51,9 +53,9 @@ export default function ClientsList() {
                                 </div>
                             </div>
                             <div className="grid grid-cols-3 gap-2 mt-5">
-                                <div><div className="hl-mono text-[10px] uppercase tracking-widest text-zinc-500">Jobs</div><div className="text-sm text-zinc-200 mt-1">{c.job_count}</div></div>
-                                <div><div className="hl-mono text-[10px] uppercase tracking-widest text-zinc-500">Spent</div><div className="text-sm hl-mono text-zinc-200 mt-1">{fmtMoney(c.total_spent || 0)}</div></div>
-                                <div><div className="hl-mono text-[10px] uppercase tracking-widest text-zinc-500">Last</div><div className="text-[11px] text-zinc-400 mt-1">{c.last_job_date ? fmtRelative(c.last_job_date) : "—"}</div></div>
+                                <div><div className="hl-mono text-[10px] uppercase tracking-widest text-zinc-500">{t("clients.card.jobs")}</div><div className="text-sm text-zinc-200 mt-1">{c.job_count}</div></div>
+                                <div><div className="hl-mono text-[10px] uppercase tracking-widest text-zinc-500">{t("clients.card.spent")}</div><div className="text-sm hl-mono text-zinc-200 mt-1">{fmtMoney(c.total_spent || 0)}</div></div>
+                                <div><div className="hl-mono text-[10px] uppercase tracking-widest text-zinc-500">{t("clients.card.last")}</div><div className="text-[11px] text-zinc-400 mt-1">{c.last_job_date ? fmtRelative(c.last_job_date) : "—"}</div></div>
                             </div>
                         </Link>
                     ))}

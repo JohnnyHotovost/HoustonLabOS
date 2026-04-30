@@ -1,23 +1,25 @@
 import { LayoutGrid, Briefcase, Users, Cpu, Wallet, FileCode2, Settings as SettingsIcon, LogOut, Search, Plus, Command, ZapIcon } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { useT } from "../../i18n/I18nContext";
 import { Button } from "../ui/button";
 import { useEffect, useState, useRef } from "react";
 import { Dialog, DialogContent } from "../ui/dialog";
 import api from "../../lib/api";
 
-const NAV = [
-    { to: "/", label: "Dashboard", icon: LayoutGrid, end: true },
-    { to: "/jobs", label: "Jobs", icon: Briefcase },
-    { to: "/clients", label: "Clients", icon: Users },
-    { to: "/devices", label: "Devices", icon: Cpu },
-    { to: "/finance", label: "Finance", icon: Wallet },
-    { to: "/templates", label: "Templates", icon: FileCode2 },
-    { to: "/settings", label: "Settings", icon: SettingsIcon },
+const NAV_KEYS = [
+    { to: "/", key: "nav.dashboard", icon: LayoutGrid, end: true, testKey: "dashboard" },
+    { to: "/jobs", key: "nav.jobs", icon: Briefcase, testKey: "jobs" },
+    { to: "/clients", key: "nav.clients", icon: Users, testKey: "clients" },
+    { to: "/devices", key: "nav.devices", icon: Cpu, testKey: "devices" },
+    { to: "/finance", key: "nav.finance", icon: Wallet, testKey: "finance" },
+    { to: "/templates", key: "nav.templates", icon: FileCode2, testKey: "templates" },
+    { to: "/settings", key: "nav.settings", icon: SettingsIcon, testKey: "settings" },
 ];
 
 function Sidebar() {
     const { user, logout } = useAuth();
+    const t = useT();
     const navigate = useNavigate();
     return (
         <aside data-testid="app-sidebar" className="hidden md:flex md:flex-col w-64 shrink-0 border-r border-[var(--hl-border)] bg-[var(--hl-sidebar)] h-screen sticky top-0">
@@ -27,22 +29,22 @@ function Sidebar() {
                 </div>
                 <div className="leading-tight">
                     <div className="text-sm font-semibold tracking-tight text-white">HoustonLab</div>
-                    <div className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">OS · v1.0</div>
+                    <div className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">{t("nav.version_tag")}</div>
                 </div>
             </div>
 
             <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-                <div className="px-2 mb-2 text-[10px] font-mono uppercase tracking-widest text-zinc-600">Workspace</div>
-                {NAV.map(({ to, label, icon: Icon, end }) => (
+                <div className="px-2 mb-2 text-[10px] font-mono uppercase tracking-widest text-zinc-600">{t("nav.workspace")}</div>
+                {NAV_KEYS.map(({ to, key, icon: Icon, end, testKey }) => (
                     <NavLink
                         key={to}
                         to={to}
                         end={end}
-                        data-testid={`nav-${label.toLowerCase()}`}
+                        data-testid={`nav-${testKey}`}
                         className={({ isActive }) => `sidebar-link ${isActive ? "active" : ""}`}
                     >
                         <span className="icon-wrap text-zinc-500"><Icon className="h-4 w-4" /></span>
-                        <span>{label}</span>
+                        <span>{t(key)}</span>
                     </NavLink>
                 ))}
             </nav>
@@ -66,6 +68,7 @@ function Sidebar() {
 }
 
 function GlobalSearch({ open, onOpenChange }) {
+    const t = useT();
     const [q, setQ] = useState("");
     const [res, setRes] = useState({ jobs: [], clients: [], devices: [] });
     const navigate = useNavigate();
@@ -99,7 +102,7 @@ function GlobalSearch({ open, onOpenChange }) {
                         data-testid="global-search-input"
                         value={q}
                         onChange={(e) => setQ(e.target.value)}
-                        placeholder="Search jobs, clients, devices…"
+                        placeholder={t("search.placeholder")}
                         className="flex-1 bg-transparent outline-none text-sm placeholder:text-zinc-600"
                     />
                     <kbd className="hl-mono text-[10px] text-zinc-500 border border-zinc-800 rounded px-1.5 py-0.5">ESC</kbd>
@@ -108,34 +111,34 @@ function GlobalSearch({ open, onOpenChange }) {
                     {!q.trim() && (
                         <div className="px-3 py-8 text-center text-sm text-zinc-500">
                             <div className="flex items-center justify-center gap-2 text-zinc-600 mb-2">
-                                <Command className="h-4 w-4" /><span className="hl-mono text-[11px] uppercase tracking-widest">Tip</span>
+                                <Command className="h-4 w-4" /><span className="hl-mono text-[11px] uppercase tracking-widest">{t("search.tip")}</span>
                             </div>
-                            Type to search across jobs, clients and devices.
+                            {t("search.tip_desc")}
                         </div>
                     )}
                     {q.trim() && (
                         <>
-                            <Section title="Jobs" items={res.jobs} render={(j) => (
+                            <Section title={t("search.section.jobs")} items={res.jobs} render={(j) => (
                                 <button data-testid={`search-job-${j.id}`} key={j.id} onClick={() => go(`/jobs/${j.id}`)} className="w-full text-left px-3 py-2 rounded-md hover:bg-[var(--hl-elevated)] flex items-center gap-3">
                                     <span className="hl-mono text-[10px] text-emerald-400/80 w-16 truncate">{j.code}</span>
                                     <span className="text-sm text-zinc-200 truncate flex-1">{j.title}</span>
                                     <span className="text-[10px] text-zinc-500">{j.status}</span>
                                 </button>
                             )} />
-                            <Section title="Clients" items={res.clients} render={(c) => (
+                            <Section title={t("search.section.clients")} items={res.clients} render={(c) => (
                                 <button data-testid={`search-client-${c.id}`} key={c.id} onClick={() => go(`/clients/${c.id}`)} className="w-full text-left px-3 py-2 rounded-md hover:bg-[var(--hl-elevated)]">
                                     <div className="text-sm text-zinc-200">{c.full_name}</div>
                                     <div className="text-[11px] text-zinc-500">{c.email || c.phone || "—"}</div>
                                 </button>
                             )} />
-                            <Section title="Devices" items={res.devices} render={(d) => (
+                            <Section title={t("search.section.devices")} items={res.devices} render={(d) => (
                                 <button data-testid={`search-device-${d.id}`} key={d.id} onClick={() => go(`/devices/${d.id}`)} className="w-full text-left px-3 py-2 rounded-md hover:bg-[var(--hl-elevated)]">
                                     <div className="text-sm text-zinc-200">{d.name}</div>
                                     <div className="text-[11px] text-zinc-500 hl-mono">{d.brand} {d.model} · {d.device_type}</div>
                                 </button>
                             )} />
                             {!res.jobs?.length && !res.clients?.length && !res.devices?.length && (
-                                <div className="px-3 py-8 text-center text-sm text-zinc-500">No matches.</div>
+                                <div className="px-3 py-8 text-center text-sm text-zinc-500">{t("common.no_results")}</div>
                             )}
                         </>
                     )}
@@ -157,22 +160,23 @@ function Section({ title, items, render }) {
 
 function TopBar({ onSearch }) {
     const navigate = useNavigate();
+    const t = useT();
     return (
         <header className="hl-glass sticky top-0 z-30 px-6 py-3.5 flex items-center gap-3">
             <button data-testid="topbar-search-btn" onClick={onSearch} className="flex items-center gap-2 text-sm text-zinc-500 hover:text-zinc-200 transition-colors px-3 py-2 rounded-lg border border-[var(--hl-border)] bg-[var(--hl-card)] hover:bg-[var(--hl-card-hover)] w-72">
                 <Search className="h-4 w-4" />
-                <span>Search HoustonLab OS…</span>
+                <span>{t("topbar.search_placeholder")}</span>
                 <kbd className="ml-auto hl-mono text-[10px] text-zinc-500 border border-zinc-800 rounded px-1.5 py-0.5">⌘K</kbd>
             </button>
             <div className="flex-1" />
             <Button data-testid="topbar-new-client" size="sm" variant="outline" className="border-[var(--hl-border)] bg-[var(--hl-card)] hover:bg-[var(--hl-elevated)]" onClick={() => navigate("/clients/new")}>
-                <Plus className="h-3.5 w-3.5 mr-1" /> Client
+                <Plus className="h-3.5 w-3.5 mr-1" /> {t("topbar.new_client")}
             </Button>
             <Button data-testid="topbar-new-device" size="sm" variant="outline" className="border-[var(--hl-border)] bg-[var(--hl-card)] hover:bg-[var(--hl-elevated)]" onClick={() => navigate("/devices/new")}>
-                <Plus className="h-3.5 w-3.5 mr-1" /> Device
+                <Plus className="h-3.5 w-3.5 mr-1" /> {t("topbar.new_device")}
             </Button>
             <Button data-testid="topbar-new-job" size="sm" className="bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-medium" onClick={() => navigate("/jobs/new")}>
-                <Plus className="h-3.5 w-3.5 mr-1" /> New Job
+                <Plus className="h-3.5 w-3.5 mr-1" /> {t("topbar.new_job")}
             </Button>
         </header>
     );

@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate, BrowserRouter, useLocation, Outlet } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { I18nProvider } from "./i18n/I18nContext";
 import { Toaster } from "./components/ui/sonner";
 import "./index.css";
 import "./App.css";
@@ -35,7 +36,8 @@ function ProtectedShell() {
 export default function App() {
     return (
         <AuthProvider>
-            <BrowserRouter>
+            <I18nProvider>
+                <BrowserRouter>
                 <Routes>
                     <Route path="/login" element={<LoginPage />} />
                     <Route element={<ProtectedShell />}>
@@ -58,7 +60,8 @@ export default function App() {
                     </Route>
                     <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
-            </BrowserRouter>
+                </BrowserRouter>
+            </I18nProvider>
             <Toaster theme="dark" position="top-right" closeButton richColors />
         </AuthProvider>
     );

@@ -13,6 +13,7 @@ class SettingsIn(BaseModel):
     accent_color: Optional[str] = None
     currency: Optional[str] = None
     logo_url: Optional[str] = None
+    language: Optional[str] = None
 
 
 @router.get("")
@@ -21,7 +22,7 @@ async def get_settings():
     s = await db.settings.find_one({"_id": "app"})
     if s:
         s.pop("_id", None)
-    return s or {"brand_name": "HoustonLab", "accent_color": "#34D399", "currency": "CZK", "logo_url": None}
+    return s or {"brand_name": "HoustonLab", "accent_color": "#34D399", "currency": "CZK", "logo_url": None, "language": "en"}
 
 
 @router.put("")

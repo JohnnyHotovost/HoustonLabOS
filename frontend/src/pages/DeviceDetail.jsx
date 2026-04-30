@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import api from "../lib/api";
+import { useT } from "../i18n/I18nContext";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
@@ -16,6 +17,7 @@ const PC_TYPES = new Set(["Desktop PC", "Gaming PC", "Laptop", "Server", "NAS"])
 export default function DeviceDetail({ mode = "view" }) {
     const { id } = useParams();
     const navigate = useNavigate();
+    const t = useT();
     const editing = mode === "edit" || mode === "new";
     const isNew = mode === "new";
 
@@ -43,58 +45,58 @@ export default function DeviceDetail({ mode = "view" }) {
     const setSpec = (k, v) => setForm({ ...form, specs: { ...form.specs, [k]: v } });
 
     const save = async () => {
-        if (!form.name?.trim()) { toast.error("Name required"); return; }
+        if (!form.name?.trim()) { toast.error(t("device.err.name_required")); return; }
         setSaving(true);
         try {
             const payload = { ...form, client_id: form.client_id || null };
             if (isNew) {
                 const { data } = await api.post("/devices", payload);
-                toast.success("Device created");
+                toast.success(t("device.created"));
                 navigate(`/devices/${data.id}`);
             } else {
                 await api.put(`/devices/${id}`, payload);
-                toast.success("Updated");
+                toast.success(t("device.updated"));
                 navigate(`/devices/${id}`);
             }
         } finally { setSaving(false); }
     };
 
     const del = async () => {
-        if (!window.confirm("Delete this device?")) return;
+        if (!window.confirm(t("device.delete_confirm"))) return;
         await api.delete(`/devices/${id}`);
-        toast.success("Deleted");
+        toast.success(t("device.deleted"));
         navigate("/devices");
     };
 
     if (editing) {
         return (
-            <div className="space-y-6 hl-fade-up max-w-3xl">
-                <button onClick={() => navigate(-1)} className="text-sm text-zinc-500 hover:text-zinc-200 flex items-center gap-1.5"><ChevronLeft className="h-4 w-4" /> Back</button>
-                <h1 className="text-3xl font-semibold tracking-tight text-white">{isNew ? "New Device" : "Edit Device"}</h1>
+            <div className="space-y-6 hl-fade-up max-w-3xl mx-auto w-full">
+                <button onClick={() => navigate(-1)} className="text-sm text-zinc-500 hover:text-zinc-200 flex items-center gap-1.5"><ChevronLeft className="h-4 w-4" /> {t("common.back")}</button>
+                <h1 className="text-3xl font-semibold tracking-tight text-white">{isNew ? t("device.new_title") : t("device.edit_title")}</h1>
                 <div className="hl-card p-6 space-y-5">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                        <Field label="Name"><Input data-testid="device-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="bg-[var(--hl-input)] border-[var(--hl-border)]" /></Field>
-                        <Field label="Type">
+                        <Field label={t("device.field.name")}><Input data-testid="device-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="bg-[var(--hl-input)] border-[var(--hl-border)]" /></Field>
+                        <Field label={t("device.field.type")}>
                             <Select value={form.device_type} onValueChange={(v) => setForm({ ...form, device_type: v })}>
                                 <SelectTrigger data-testid="device-type" className="bg-[var(--hl-input)] border-[var(--hl-border)]"><SelectValue /></SelectTrigger>
                                 <SelectContent>{DEVICE_TYPES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
                             </Select>
                         </Field>
-                        <Field label="Brand"><Input value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value })} className="bg-[var(--hl-input)] border-[var(--hl-border)]" /></Field>
-                        <Field label="Model"><Input value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} className="bg-[var(--hl-input)] border-[var(--hl-border)]" /></Field>
-                        <Field label="Serial number"><Input data-testid="device-serial" value={form.serial} onChange={(e) => setForm({ ...form, serial: e.target.value })} className="bg-[var(--hl-input)] border-[var(--hl-border)] hl-mono" /></Field>
-                        <Field label="Owner / Client">
+                        <Field label={t("device.field.brand")}><Input value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value })} className="bg-[var(--hl-input)] border-[var(--hl-border)]" /></Field>
+                        <Field label={t("device.field.model")}><Input value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} className="bg-[var(--hl-input)] border-[var(--hl-border)]" /></Field>
+                        <Field label={t("device.field.serial")}><Input data-testid="device-serial" value={form.serial} onChange={(e) => setForm({ ...form, serial: e.target.value })} className="bg-[var(--hl-input)] border-[var(--hl-border)] hl-mono" /></Field>
+                        <Field label={t("device.field.owner")}>
                             <Select value={form.client_id || "none"} onValueChange={(v) => setForm({ ...form, client_id: v === "none" ? "" : v })}>
-                                <SelectTrigger className="bg-[var(--hl-input)] border-[var(--hl-border)]"><SelectValue placeholder="No owner" /></SelectTrigger>
-                                <SelectContent><SelectItem value="none">No owner</SelectItem>{clients.map(c => <SelectItem key={c.id} value={c.id}>{c.full_name}</SelectItem>)}</SelectContent>
+                                <SelectTrigger className="bg-[var(--hl-input)] border-[var(--hl-border)]"><SelectValue placeholder={t("device.no_owner")} /></SelectTrigger>
+                                <SelectContent><SelectItem value="none">{t("device.no_owner")}</SelectItem>{clients.map(c => <SelectItem key={c.id} value={c.id}>{c.full_name}</SelectItem>)}</SelectContent>
                             </Select>
                         </Field>
                     </div>
-                    <Field label="Notes"><Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="bg-[var(--hl-input)] border-[var(--hl-border)] min-h-[80px]" /></Field>
+                    <Field label={t("device.field.notes")}><Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="bg-[var(--hl-input)] border-[var(--hl-border)] min-h-[80px]" /></Field>
 
                     {isPC && (
                         <div className="pt-5 border-t border-[var(--hl-border-subtle)]">
-                            <div className="hl-mono text-[10px] uppercase tracking-widest text-zinc-500 mb-3">PC hardware specs (optional)</div>
+                            <div className="hl-mono text-[10px] uppercase tracking-widest text-zinc-500 mb-3">{t("device.specs_heading")}</div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                 {[["cpu", "CPU"], ["gpu", "GPU"], ["motherboard", "Motherboard"], ["ram", "RAM"], ["storage", "Storage"], ["psu", "PSU"], ["cooling", "Cooling"], ["case", "Case"], ["os", "OS"], ["bios_version", "BIOS"], ["benchmark", "Benchmark"], ["temps", "Temperatures"]].map(([k, l]) => (
                                     <Field key={k} label={l}><Input value={form.specs[k] || ""} onChange={(e) => setSpec(k, e.target.value)} className="bg-[var(--hl-input)] border-[var(--hl-border)]" /></Field>
@@ -104,15 +106,15 @@ export default function DeviceDetail({ mode = "view" }) {
                     )}
 
                     <div className="flex justify-end gap-3">
-                        <Button variant="ghost" onClick={() => navigate(-1)}>Cancel</Button>
-                        <Button data-testid="device-save-btn" onClick={save} disabled={saving} className="bg-emerald-500 hover:bg-emerald-400 text-zinc-950 gap-2">{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save</Button>
+                        <Button variant="ghost" onClick={() => navigate(-1)}>{t("common.cancel")}</Button>
+                        <Button data-testid="device-save-btn" onClick={save} disabled={saving} className="bg-emerald-500 hover:bg-emerald-400 text-zinc-950 gap-2">{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} {t("common.save")}</Button>
                     </div>
                 </div>
             </div>
         );
     }
 
-    if (!device) return <div className="text-zinc-500 text-sm">Loading…</div>;
+    if (!device) return <div className="text-zinc-500 text-sm">{t("common.loading")}</div>;
 
     return (
         <div className="space-y-6 hl-fade-up">

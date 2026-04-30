@@ -359,6 +359,7 @@ async def seed_settings(db):
             "accent_color": "#34D399",
             "currency": "CZK",
             "logo_url": None,
+            "language": "en",
             "updated_at": now_iso(),
         })
 
