@@ -51,13 +51,18 @@ Build a premium full-stack web application called **HoustonLab OS** — a privat
 - **Range option order** unified everywhere: Today → This week → This month → Last 6 months → This year → All time → Custom (and matching Czech labels).
 - **Recharts initial-tooltip fix**: custom Tooltip content returns `null` when `active` is false on Dashboard + Finance charts — no more popup on initial mount.
 
+### Dashboard Security card + secret.copied tracking (iteration 5 — April 30, 2026)
+- **Compact SecurityCard** on the Dashboard (last 24 h by default): Sign-ins, Failed logins, Secrets revealed, Files viewed, Deletions, plus a 6th *Reveal denied* tile when >0. Subtle red ring + ShieldAlert icon when failed_logins>0 OR reveal_denied>0; calm "No unusual activity in the last 24h" state when everything is zero. *View audit log* link → `/audit`.
+- **Backend**: new `GET /api/audit/summary?range=…` returns `{range, counts:{login_success, login_failed, secret_revealed, secret_reveal_denied, secret_copied, secret_created, secret_deleted, file_viewed, file_uploaded, file_deleted, deletions, settings_updated}, raw}`.
+- **Frontend `secret.copied` audit**: clicking *Copy* on a revealed secret fires `POST /api/jobs/{job_id}/secrets/{sid}/copied` (audit-only — never sends the value). Endpoint stores `entity_label` (label) + `meta.job_id` and IP/UA. Verified by 16 new pytest tests including a load-bearing "no plaintext leak" assertion.
+
 ## Backend response shape (current)
 - `GET /api/dashboard/stats?range=...` → `{ counts, revenue:{range,total,currency}, range:{key,from,to,granularity}, series:[{bucket,revenue}], by_status, by_category, recent_activity, recent_clients, recent_devices, upcoming }`
 - `GET /api/dashboard/finance?range=...` → `{ total_revenue, unpaid_total, paid_count, unpaid_count, avg_job_value, by_category, series:[{bucket,revenue}], unpaid_jobs, paid_jobs, range, currency }`
 
 ## Testing
-- `/app/backend/tests/backend_test.py` + `/app/backend/tests/test_audit_new.py` — 46 pytest tests, 100% pass.
-- Iterations: `/app/test_reports/iteration_1.json` (MVP), `iteration_2.json` (security + frontend), `iteration_3.json` (custom-range fix verified), `iteration_4.json` (audit log + range order + tooltip fix).
+- `/app/backend/tests/backend_test.py` + `test_audit_new.py` + `test_security_card.py` — 62 pytest tests, 100% pass.
+- Iterations: `iteration_1.json` (MVP) · `iteration_2.json` (security + frontend) · `iteration_3.json` (custom-range fix) · `iteration_4.json` (audit log + range order + tooltip fix) · `iteration_5.json` (security card + secret.copied).
 
 ## Backlog (P1)
 - Photo before/after comparison slider in gallery.
