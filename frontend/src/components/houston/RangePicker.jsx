@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useT } from "../../i18n/I18nContext";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../ui/select";
-import { Popover, PopoverTrigger, PopoverContent } from "../ui/popover";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../ui/dialog";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { Label } from "../ui/label";
@@ -21,7 +21,8 @@ export default function RangePicker({ value, onChange, testId = "range-picker" }
     const handleSelect = (key) => {
         if (key === "custom") {
             setDraft({ from: value?.from || "", to: value?.to || "" });
-            setOpen(true);
+            // Defer opening the dialog past the Select's portal unmount so they don't fight.
+            setTimeout(() => setOpen(true), 50);
             return;
         }
         onChange({ key });
@@ -64,17 +65,15 @@ export default function RangePicker({ value, onChange, testId = "range-picker" }
                 </SelectContent>
             </Select>
 
-            <Popover open={open} onOpenChange={setOpen}>
-                <PopoverTrigger asChild>
-                    <span />
-                </PopoverTrigger>
-                <PopoverContent
-                    align="end"
-                    className="w-72 bg-[var(--hl-card)] border-[var(--hl-border)]"
+            <Dialog open={open} onOpenChange={setOpen}>
+                <DialogContent
                     data-testid={`${testId}-custom-popover`}
+                    className="bg-[var(--hl-card)] border-[var(--hl-border)] sm:max-w-md"
                 >
-                    <div className="space-y-3">
-                        <div className="text-sm font-medium text-white">{t("range.custom")}</div>
+                    <DialogHeader>
+                        <DialogTitle>{t("range.custom")}</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 pt-2">
                         <div className="space-y-2">
                             <Label className="text-xs hl-mono uppercase tracking-widest text-zinc-500">
                                 {t("range.from")}
@@ -103,16 +102,21 @@ export default function RangePicker({ value, onChange, testId = "range-picker" }
                                 className="bg-[var(--hl-input)] border-[var(--hl-border)]"
                             />
                         </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="ghost" onClick={() => setOpen(false)}>
+                            {t("common.cancel")}
+                        </Button>
                         <Button
                             data-testid={`${testId}-custom-apply`}
                             onClick={applyCustom}
-                            className="w-full bg-emerald-500 hover:bg-emerald-400 text-zinc-950"
+                            className="bg-emerald-500 hover:bg-emerald-400 text-zinc-950"
                         >
                             {t("range.apply")}
                         </Button>
-                    </div>
-                </PopoverContent>
-            </Popover>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

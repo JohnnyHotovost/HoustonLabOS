@@ -1,0 +1,36 @@
+{
+  "summary": "Iteration 3 — Verified RangePicker fix (Popover→Dialog + 50ms defer). Both Dashboard and Finance Custom range flows now mount the dialog with from/to/apply inputs, and Apply correctly fires the backend with range=custom&from=...&to=... Backend regression 40/40 still PASS.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Dashboard Revenue chart", "issues": ["Recharts still shows an initial active tooltip dot (e.g. 'W18 revenue: 500') on mount without hover — same cosmetic carry-over from iteration_1/2, low priority."]},
+      {"screen": "Finance Monthly revenue chart", "issues": ["Same Recharts initial-active-tooltip behaviour — appears as a large highlighted area on initial render."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "(optional, low priority) Suppress Recharts default active tooltip on initial render of Revenue/Monthly-revenue charts (set activeIndex/activeDot only on hover)."
+  ],
+  "critical_code_review_comments": [
+    "RangePicker.jsx: Dialog approach + 50ms setTimeout works reliably. Consider replacing the magic 50ms with a small reusable helper or document the rationale in a code comment so it's not removed accidentally during refactors.",
+    "Carry-over from iteration_1/2 still open: CORS allow_origins=['*'] + allow_credentials=True is invalid per CORS spec — narrow to explicit origins.",
+    "Carry-over: server.py uses deprecated @app.on_event(startup/shutdown) — migrate to FastAPI lifespan.",
+    "Carry-over: /api/auth/change-password blocks new_password == DEFAULT_ADMIN_PASSWORD globally; the test suite restores admin pw via direct Mongo write. Consider scoping that policy only to the seeded admin account."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100% (40/40)", "frontend": "100% on regression scope (custom-range fix verified on both Dashboard + Finance, defaults intact, login polish + must-change banner intact)"},
+  "test_credentials": "admin / ChangeMe123! — confirmed still valid post pytest run (pytest restores via DB write).",
+  "seed_data_creation": "None persistent. All TEST_-prefixed clients/devices/jobs/secrets/attachments deleted in fixture teardown.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "RangePicker fix verified end-to-end. Network capture confirms Apply fires `GET /api/dashboard/stats?range=custom&from=2026-01-01T00:00:00Z&to=2026-04-30T23:59:59Z` (and the same for /api/dashboard/finance from the dashboard page; only finance from the Finance page). Dialog data-testids: `dashboard-range-custom-popover|-custom-from|-custom-to|-custom-apply` and `finance-range-custom-*` all mount and unmount as expected. Login form testids are `login-identifier-input`, `login-password-input`, `login-submit-btn` (not -input/-btn-less variants). App home route after login is `/` (not `/dashboard`); use `[data-testid=\"dashboard-range\"]` to detect dashboard load instead of URL pattern.",
+  "rca of the issue": "Original Iteration-2 defect RCA: PopoverTrigger was an empty <span/> opened programmatically while Radix Select's portal was unmounting — focus/portal race closed the popover before mount commit. Fix applied (this iteration): RangePicker.jsx now uses shadcn Dialog (modal, no anchor) and `setTimeout(() => setOpen(true), 50)` inside handleSelect to defer the open past the Select's portal teardown. Verified: dialog renders, inputs are focusable/fillable, Apply submits expected query params, dialog unmounts cleanly. Mitigation note: 50ms is a heuristic; if the Select unmount timing changes, prefer chaining on the Select's onCloseAutoFocus / SelectContent unmount lifecycle for a deterministic handoff."
+}
