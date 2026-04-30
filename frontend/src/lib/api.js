@@ -23,4 +23,22 @@ export function fileUrl(url) {
     return `${BACKEND_URL}${url}`;
 }
 
+/**
+ * Auth-protected file download. Triggers a browser download by fetching
+ * the protected file via axios (Authorization header) and using a blob URL.
+ */
+export async function downloadFile(url, filename) {
+    const path = url.startsWith("http") ? url.replace(/^https?:\/\/[^/]+/, "") : url;
+    const requestPath = path.startsWith("/api/") ? path.slice(4) : path;
+    const r = await api.get(requestPath, { responseType: "blob" });
+    const blobUrl = URL.createObjectURL(r.data);
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = filename || "download";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+}
+
 export default api;

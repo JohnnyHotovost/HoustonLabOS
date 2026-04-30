@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import api, { fileUrl } from "../lib/api";
+import api, { fileUrl, downloadFile } from "../lib/api";
 import { Button } from "../components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "../components/ui/tabs";
 import { Input } from "../components/ui/input";
@@ -14,6 +14,7 @@ import { ChevronLeft, Pencil, Plus, Trash2, Eye, EyeOff, Copy, Lock, Upload, Ima
 import { fmtMoney, fmtDateTime, fmtRelative, STATUS_OPTIONS, PRIORITY_OPTIONS, PAYMENT_STATUS_OPTIONS, PAYMENT_METHOD_OPTIONS, TIMELINE_TYPES } from "../lib/format";
 import { toast } from "sonner";
 import { EmptyState } from "../components/houston/EmptyState";
+import AuthImage from "../components/houston/AuthImage";
 
 const ENTRY_DOT = {
     "Note": "bg-zinc-500", "Diagnosis": "bg-blue-400", "Repair": "bg-emerald-400",
@@ -352,7 +353,7 @@ function FilesTab({ job, reload, fileInput, onUpload, attachments }) {
                         <tbody>
                             {attachments.map((a) => (
                                 <tr key={a.id} className="border-b border-[var(--hl-border-subtle)]">
-                                    <td className="px-5 py-3"><a href={fileUrl(a.url)} target="_blank" rel="noreferrer" className="text-emerald-300 hover:text-emerald-200 text-sm">{a.original_name}</a></td>
+                                    <td className="px-5 py-3"><button onClick={() => downloadFile(a.url, a.original_name)} className="text-emerald-300 hover:text-emerald-200 text-sm text-left">{a.original_name}</button></td>
                                     <td className="px-5 py-3 text-xs text-zinc-400">{a.category || "—"}</td>
                                     <td className="px-5 py-3 hl-mono text-xs text-zinc-400">{Math.round((a.size || 0) / 1024)} KB</td>
                                     <td className="px-5 py-3 hl-mono text-xs text-zinc-500">{fmtRelative(a.created_at)}</td>
@@ -382,12 +383,17 @@ function GalleryTab({ attachments, onUploadClick, fileInput, onUpload }) {
             ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                     {attachments.map((a) => (
-                        <a key={a.id} href={fileUrl(a.url)} target="_blank" rel="noreferrer" className="hl-card overflow-hidden group block">
+                        <button
+                            key={a.id}
+                            type="button"
+                            onClick={() => downloadFile(a.url, a.original_name)}
+                            className="hl-card overflow-hidden group block text-left"
+                        >
                             <div className="aspect-square bg-zinc-900 overflow-hidden">
-                                <img src={fileUrl(a.url)} alt={a.original_name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                <AuthImage src={fileUrl(a.url)} alt={a.original_name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                             </div>
                             <div className="px-3 py-2 text-[11px] text-zinc-500 truncate">{a.category || a.original_name}</div>
-                        </a>
+                        </button>
                     ))}
                 </div>
             )}

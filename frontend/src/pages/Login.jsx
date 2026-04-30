@@ -6,7 +6,7 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Checkbox } from "../components/ui/checkbox";
-import { ZapIcon, Lock, Loader2, ShieldCheck } from "lucide-react";
+import { ZapIcon, Lock, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function LoginPage() {
@@ -84,53 +84,28 @@ export default function LoginPage() {
                     </div>
 
                     <div className="mt-10 text-[11px] text-zinc-600 hl-mono leading-relaxed">
-                        {t("login.default_seed")} <span className="text-zinc-400">admin</span> · <span className="text-zinc-400">ChangeMe123!</span><br />
-                        {t("login.default_seed_note")}
+                        {t("login.tip_change")}
                     </div>
                 </form>
             </div>
 
             {/* Right: frosted access-required visual */}
             <div className="hidden lg:block flex-1 relative overflow-hidden border-l border-[var(--hl-border)]">
-                {/* Heavily blurred background image — "behind glass" feel */}
+                {/* Lightly blurred background image — readable but cinematic */}
                 <div
                     className="absolute inset-0 bg-cover bg-center scale-110"
                     style={{
                         backgroundImage: "url('https://images.unsplash.com/photo-1769002240965-7cc4b129d81a?crop=entropy&cs=srgb&fm=jpg&q=85')",
-                        filter: "blur(26px) saturate(0.85) brightness(0.55)",
+                        filter: "blur(8px) saturate(0.95) brightness(0.7)",
                     }}
                 />
                 {/* Dark cinematic overlay */}
-                <div className="absolute inset-0 bg-gradient-to-br from-[var(--hl-bg)]/85 via-black/60 to-emerald-950/35" />
+                <div className="absolute inset-0 bg-gradient-to-br from-[var(--hl-bg)]/80 via-black/50 to-emerald-950/30" />
                 {/* Subtle green "lab glow" */}
                 <div className="absolute -top-1/4 -right-1/4 w-[70vh] h-[70vh] rounded-full bg-emerald-500/10 blur-[160px]" />
-                <div className="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-black/70 to-transparent" />
+                <div className="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-black/60 to-transparent" />
                 {/* Thin grid for technical texture */}
                 <div className="absolute inset-0 hl-grid-bg opacity-25" />
-                {/* Frosted glass vignette — the "door" */}
-                <div className="absolute inset-0 pointer-events-none"
-                    style={{
-                        backdropFilter: "blur(2px)",
-                        WebkitBackdropFilter: "blur(2px)",
-                        background: "radial-gradient(ellipse at 65% 45%, rgba(10,10,12,0) 0%, rgba(10,10,12,0.55) 70%, rgba(10,10,12,0.9) 100%)",
-                    }}
-                />
-                {/* Top-right security badge */}
-                <div className="absolute top-8 right-8 flex items-center gap-2 px-3 py-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/[0.06] backdrop-blur-md">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 hl-pulse-dot" />
-                    <span className="hl-mono text-[10px] uppercase tracking-widest text-emerald-300">{t("login.secured_badge")}</span>
-                </div>
-                {/* Center lock / access-required emblem */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[65%] flex flex-col items-center">
-                    <div className="relative">
-                        <div className="absolute inset-0 bg-emerald-500/20 blur-2xl rounded-full" />
-                        <div className="relative h-20 w-20 rounded-2xl border border-emerald-500/30 bg-[var(--hl-card)]/60 backdrop-blur-xl flex items-center justify-center shadow-[0_0_80px_-10px_rgba(52,211,153,0.35)]">
-                            <ShieldCheck className="h-9 w-9 text-emerald-300" strokeWidth={1.4} />
-                        </div>
-                    </div>
-                    <div className="mt-5 hl-mono text-[10px] uppercase tracking-[0.3em] text-emerald-400/80">{t("login.access_required")}</div>
-                    <div className="mt-2 h-px w-24 bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent" />
-                </div>
                 {/* Tagline */}
                 <div className="absolute bottom-12 left-12 right-12">
                     <div className="hl-mono text-[10px] uppercase tracking-widest text-emerald-400/80 mb-3">{t("login.kicker")}</div>

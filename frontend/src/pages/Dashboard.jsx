@@ -4,6 +4,7 @@ import api from "../lib/api";
 import { fmtMoney, fmtRelative } from "../lib/format";
 import { useT } from "../i18n/I18nContext";
 import { StatusBadge, PriorityBadge } from "../components/houston/Badges";
+import RangePicker, { rangeParams, formatBucketLabel } from "../components/houston/RangePicker";
 import { Briefcase, CheckCircle2, AlertCircle, Wallet, ArrowUpRight, Calendar, Activity, Plus, Cpu, Users } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Skeleton } from "../components/ui/skeleton";
@@ -35,14 +36,23 @@ function StatCard({ label, value, hint, icon: Icon, accent, testId }) {
 export default function Dashboard() {
     const [stats, setStats] = useState(null);
     const [finance, setFinance] = useState(null);
+    const [range, setRange] = useState({ key: "6m" }); // Dashboard default: Last 6 months
     const t = useT();
 
     useEffect(() => {
+        let cancel = false;
         (async () => {
-            const [s, f] = await Promise.all([api.get("/dashboard/stats"), api.get("/dashboard/finance")]);
-            setStats(s.data); setFinance(f.data);
+            const params = rangeParams(range);
+            const [s, f] = await Promise.all([
+                api.get("/dashboard/stats", { params }),
+                api.get("/dashboard/finance", { params }),
+            ]);
+            if (cancel) return;
+            setStats(s.data);
+            setFinance(f.data);
         })();
-    }, []);
+        return () => { cancel = true; };
+    }, [range]);
 
     if (!stats || !finance) {
         return (
@@ -52,6 +62,8 @@ export default function Dashboard() {
         );
     }
 
+    const series = (stats.series || []).map((p) => ({ ...p, label: formatBucketLabel(p.bucket) }));
+
     return (
         <div className="space-y-8 hl-fade-up">
             <div className="flex items-end justify-between flex-wrap gap-4">
@@ -60,7 +72,8 @@ export default function Dashboard() {
                     <h1 className="text-3xl font-semibold tracking-tight text-white">{t("dashboard.title")}</h1>
                     <p className="text-sm text-zinc-500 mt-1">{t("dashboard.subtitle")}</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex items-center gap-3 flex-wrap">
+                    <RangePicker value={range} onChange={setRange} testId="dashboard-range" />
                     <Button asChild variant="outline" className="border-[var(--hl-border)] bg-[var(--hl-card)] hover:bg-[var(--hl-elevated)]">
                         <Link to="/jobs/new" data-testid="quick-new-job"><Plus className="h-4 w-4 mr-2" /> {t("dashboard.new_job")}</Link>
                     </Button>
@@ -72,7 +85,7 @@ export default function Dashboard() {
                 <StatCard testId="kpi-active" label={t("dashboard.kpi.active")} value={stats.counts.active} hint={t("dashboard.kpi.total_total", { n: stats.counts.total })} icon={Briefcase} accent="bg-cyan-500/10 text-cyan-300" />
                 <StatCard testId="kpi-completed" label={t("dashboard.kpi.completed")} value={stats.counts.completed} hint={t("dashboard.kpi.alltime")} icon={CheckCircle2} accent="bg-emerald-500/10 text-emerald-300" />
                 <StatCard testId="kpi-unpaid" label={t("dashboard.kpi.unpaid")} value={stats.counts.unpaid} hint={t("dashboard.kpi.outstanding", { amount: fmtMoney(finance.unpaid_total) })} icon={AlertCircle} accent="bg-red-500/10 text-red-300" />
-                <StatCard testId="kpi-revenue" label={t("dashboard.kpi.monthly_revenue")} value={fmtMoney(stats.revenue.monthly)} hint={t("dashboard.kpi.total_hint", { amount: fmtMoney(stats.revenue.total) })} icon={Wallet} accent="bg-emerald-500/10 text-emerald-300" />
+                <StatCard testId="kpi-revenue" label={t("range.revenue_in_range")} value={fmtMoney(stats.revenue.range)} hint={t("dashboard.kpi.total_hint", { amount: fmtMoney(stats.revenue.total) })} icon={Wallet} accent="bg-emerald-500/10 text-emerald-300" />
             </div>
 
             {/* Chart + Activity */}
@@ -80,7 +93,7 @@ export default function Dashboard() {
                 <div className="lg:col-span-2 hl-card p-6">
                     <div className="flex items-center justify-between mb-4">
                         <div>
-                            <div className="hl-mono text-[10px] uppercase tracking-widest text-zinc-500 mb-1">{t("dashboard.chart.last6")}</div>
+                            <div className="hl-mono text-[10px] uppercase tracking-widest text-zinc-500 mb-1">// {t("range.label")}</div>
                             <div className="text-base font-medium text-white">{t("dashboard.chart.revenue")}</div>
                         </div>
                         <Link to="/finance" className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1">
@@ -89,7 +102,7 @@ export default function Dashboard() {
                     </div>
                     <div className="h-64">
                         <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={finance.monthly}>
+                            <AreaChart data={series}>
                                 <defs>
                                     <linearGradient id="rev" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="5%" stopColor="#34d399" stopOpacity={0.4} />
@@ -97,9 +110,13 @@ export default function Dashboard() {
                                     </linearGradient>
                                 </defs>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
-                                <XAxis dataKey="month" stroke="#71717a" fontSize={11} tickLine={false} axisLine={false} />
+                                <XAxis dataKey="label" stroke="#71717a" fontSize={11} tickLine={false} axisLine={false} />
                                 <YAxis stroke="#71717a" fontSize={11} tickLine={false} axisLine={false} />
-                                <Tooltip contentStyle={{ background: "#121215", border: "1px solid #27272a", borderRadius: 10, fontSize: 12 }} labelStyle={{ color: "#a1a1aa" }} />
+                                <Tooltip
+                                    contentStyle={{ background: "#121215", border: "1px solid #27272a", borderRadius: 10, fontSize: 12 }}
+                                    labelStyle={{ color: "#a1a1aa" }}
+                                    cursor={{ fill: "rgba(52,211,153,0.06)" }}
+                                />
                                 <Area type="monotone" dataKey="revenue" stroke="#34d399" strokeWidth={2} fill="url(#rev)" />
                             </AreaChart>
                         </ResponsiveContainer>

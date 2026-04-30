@@ -1,0 +1,39 @@
+{
+  "summary": "Iteration 2 — Backend regression + new feature tests (40/40 PASSED). Frontend smoke-tested for new items: Login polish, Dashboard/Finance range selectors, must-change-password banner+CTA, settings force-notice. One frontend defect: Custom-range popover does not open after selecting 'Custom…' — its inputs/apply button never mount.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/auth/change-password", "issue": "Endpoint correctly blocks new_password == DEFAULT_ADMIN_PASSWORD (good policy), but this means tests cannot restore the default seed password via API. Tests now restore via direct DB write."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "RangePicker (dashboard + finance)", "issue": "After selecting the 'Custom…' option in the Select, the Popover for from/to date inputs never renders in the DOM. data-testid='dashboard-range-custom-popover|custom-from|custom-to|custom-apply' all return count=0. Root cause: the Radix Popover uses an empty <span/> as its PopoverTrigger and is opened programmatically via setOpen(true) inside handleSelect — but the Select dropdown closing seems to immediately close the Popover (focus/portal race). Suggest using DialogTrigger asChild on a real anchor (e.g. the SelectTrigger) or use a Dialog instead of Popover with no anchor.", "selector": "[data-testid='dashboard-range-custom-popover']", "priority": "HIGH"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Dashboard Revenue chart", "issues": ["Recharts shows an initial active tooltip dot ('04/26') on mount even without hover — same cosmetic issue from iteration_1, still present."]},
+      {"screen": "Login right-side image", "issues": ["Image still appears notably blurred at 1920x1080 — hard to tell from screenshot if 8px blur was applied. Visual sanity OK but consider verifying the new blur value reaches DOM."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/backend_test.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Fix dashboard/finance custom-range popover so its inputs (data-testid -custom-from/-custom-to/-custom-apply) actually mount on selecting Custom… (likely change PopoverTrigger to anchor on the SelectTrigger or use a Dialog).",
+    "(optional) Suppress initial Recharts active-tooltip on Dashboard mount."
+  ],
+  "critical_code_review_comments": [
+    "Backend allows blocking 'new_password == DEFAULT_ADMIN_PASSWORD' (good), but this also rejects ANY user who legitimately wants that string after rotation. Acceptable for default-admin only — consider restricting check to admin user only.",
+    "RangePicker.jsx uses an empty span as PopoverTrigger; this is fragile (no anchor positioning, no aria). Use the SelectTrigger as anchor or switch to a Dialog.",
+    "/api/dashboard/* shape changed (series + revenue.range) — confirm all frontend consumers (Dashboard.jsx, Finance.jsx) handle empty series gracefully (recharts ResponsiveContainer width(-1) warnings persist in console).",
+    "From iteration_1 still open: CORS allow_origins=['*'] + allow_credentials=True is invalid per CORS spec — narrow to explicit origins.",
+    "From iteration_1 still open: server.py uses deprecated @app.on_event(startup/shutdown) — migrate to lifespan."
+  ],
+  "updated_files": ["/app/backend/tests/backend_test.py"],
+  "success_rate": {"backend": "100% (40/40)", "frontend": "~85% (login polish OK, banner OK, both range selectors mount with correct defaults and switch to non-custom ranges OK, settings force-notice OK; Custom popover broken)"},
+  "test_credentials": "admin / ChangeMe123! (restored to ChangeMe123! at end of pytest run via DB write).",
+  "seed_data_creation": "None persistent. All TEST_-prefixed clients/devices/jobs/secrets/attachments are deleted in fixture teardown.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend test file /app/backend/tests/backend_test.py now has 40 tests including dashboard range/custom, audit secret.revealed/reveal_denied, authenticated /api/files/{id} (401 without token). The change-password roundtrip test restores admin pw via direct Mongo write because the API now blocks new_password == DEFAULT_ADMIN_PASSWORD. Frontend Custom popover NOT rendering — verify after fix. Use [data-testid='dashboard-range-opt-custom'] to trigger.",
+  "rca of the issue": "Custom-range popover defect: RangePicker has Popover trigger as empty <span/> with open state set via setOpen(true) inside Select.onValueChange. When the Select's dropdown closes its overlay, focus returns and Radix Popover's outside-click logic (or the Select portal unmount) causes the Popover to close before render is committed, leaving no DOM nodes for the date inputs. Fix: anchor the Popover to the SelectTrigger using <PopoverAnchor asChild> wrapping the trigger, OR swap Popover for Dialog (modal), OR delay setOpen(true) one tick after the Select closes (e.g. setTimeout(()=>setOpen(true), 0))."
+}

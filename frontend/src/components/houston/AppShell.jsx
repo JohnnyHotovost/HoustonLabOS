@@ -6,6 +6,7 @@ import { Button } from "../ui/button";
 import { useEffect, useState, useRef } from "react";
 import { Dialog, DialogContent } from "../ui/dialog";
 import api from "../../lib/api";
+import MustChangePasswordBanner from "./MustChangePasswordBanner";
 
 const NAV_KEYS = [
     { to: "/", key: "nav.dashboard", icon: LayoutGrid, end: true, testKey: "dashboard" },
@@ -201,6 +202,7 @@ export default function AppShell({ children }) {
             <Sidebar />
             <div className="flex-1 min-w-0 flex flex-col">
                 <TopBar onSearch={() => setSearchOpen(true)} />
+                <MustChangePasswordBanner />
                 <main className="flex-1 px-6 lg:px-10 py-8 max-w-[1600px] w-full mx-auto">
                     {children}
                 </main>

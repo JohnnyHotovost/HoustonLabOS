@@ -6,6 +6,7 @@ import { useT } from "../i18n/I18nContext";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import { TrendingUp, AlertTriangle, Wallet, BarChart2 } from "lucide-react";
 import { PaymentBadge } from "../components/houston/Badges";
+import RangePicker, { rangeParams, formatBucketLabel } from "../components/houston/RangePicker";
 
 function StatCard({ label, value, hint, icon: Icon, accent }) {
     return (
@@ -26,17 +27,31 @@ function StatCard({ label, value, hint, icon: Icon, accent }) {
 
 export default function FinancePage() {
     const [data, setData] = useState(null);
+    const [range, setRange] = useState({ key: "month" }); // Finance default: This month
     const t = useT();
-    useEffect(() => { (async () => { const r = await api.get("/dashboard/finance"); setData(r.data); })(); }, []);
+
+    useEffect(() => {
+        let cancel = false;
+        (async () => {
+            const r = await api.get("/dashboard/finance", { params: rangeParams(range) });
+            if (!cancel) setData(r.data);
+        })();
+        return () => { cancel = true; };
+    }, [range]);
 
     if (!data) return <div className="text-zinc-500 text-sm">{t("common.loading")}</div>;
 
+    const series = (data.series || []).map((p) => ({ ...p, label: formatBucketLabel(p.bucket) }));
+
     return (
         <div className="space-y-7 hl-fade-up">
-            <div>
-                <div className="hl-mono text-[10px] uppercase tracking-widest text-emerald-400/80 mb-1.5">{t("finance.kicker")}</div>
-                <h1 className="text-3xl font-semibold tracking-tight text-white">{t("finance.title")}</h1>
-                <p className="text-sm text-zinc-500 mt-1">{t("finance.subtitle")}</p>
+            <div className="flex items-end justify-between flex-wrap gap-4">
+                <div>
+                    <div className="hl-mono text-[10px] uppercase tracking-widest text-emerald-400/80 mb-1.5">{t("finance.kicker")}</div>
+                    <h1 className="text-3xl font-semibold tracking-tight text-white">{t("finance.title")}</h1>
+                    <p className="text-sm text-zinc-500 mt-1">{t("finance.subtitle")}</p>
+                </div>
+                <RangePicker value={range} onChange={setRange} testId="finance-range" />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -51,11 +66,14 @@ export default function FinancePage() {
                     <div className="text-base font-medium text-white mb-4">{t("finance.monthly_title")}</div>
                     <div className="h-72">
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={data.monthly}>
+                            <BarChart data={series}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
-                                <XAxis dataKey="month" stroke="#71717a" fontSize={11} tickLine={false} axisLine={false} />
+                                <XAxis dataKey="label" stroke="#71717a" fontSize={11} tickLine={false} axisLine={false} />
                                 <YAxis stroke="#71717a" fontSize={11} tickLine={false} axisLine={false} />
-                                <Tooltip contentStyle={{ background: "#121215", border: "1px solid #27272a", borderRadius: 10, fontSize: 12 }} />
+                                <Tooltip
+                                    contentStyle={{ background: "#121215", border: "1px solid #27272a", borderRadius: 10, fontSize: 12 }}
+                                    cursor={{ fill: "rgba(52,211,153,0.06)" }}
+                                />
                                 <Bar dataKey="revenue" fill="#34d399" radius={[6, 6, 0, 0]} />
                             </BarChart>
                         </ResponsiveContainer>
@@ -79,6 +97,9 @@ export default function FinancePage() {
                                 </div>
                             );
                         })}
+                        {data.by_category.length === 0 && (
+                            <div className="text-sm text-zinc-500">{t("dashboard.activity.empty")}</div>
+                        )}
                     </div>
                 </div>
             </div>

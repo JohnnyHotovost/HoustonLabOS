@@ -40,10 +40,7 @@ const cs = {
     "login.password": "Heslo",
     "login.remember": "Zapamatovat přihlášení na 30 dní",
     "login.submit": "Přihlásit do HoustonLab OS",
-    "login.default_seed": "Výchozí účet:",
-    "login.default_seed_note": "Po prvním přihlášení si prosím změňte heslo v Nastavení.",
-    "login.access_required": "VYŽADOVÁN PŘÍSTUP",
-    "login.secured_badge": "ZABEZPEČENÝ PERIMETR",
+    "login.tip_change": "Použijte přihlašovací údaje od správce. Po prvním přihlášení si prosím změňte heslo v Nastavení.",
     "login.hero_title_pre": "Každá zakázka. Každé zařízení.",
     "login.hero_title_accent": "Každý detail",
     "login.hero_title_post": "— uchováno.",
@@ -347,6 +344,26 @@ const cs = {
     "search.section.jobs": "Zakázky",
     "search.section.clients": "Klienti",
     "search.section.devices": "Zařízení",
+
+    // date range selector
+    "range.label": "Rozsah",
+    "range.today": "Dnes",
+    "range.week": "Tento týden",
+    "range.month": "Tento měsíc",
+    "range.year": "Tento rok",
+    "range.6m": "Posledních 6 měsíců",
+    "range.all": "Celkově",
+    "range.custom": "Vlastní…",
+    "range.from": "Od",
+    "range.to": "Do",
+    "range.apply": "Použít",
+    "range.revenue_in_range": "Tržby v rozsahu",
+
+    // force password change
+    "pwd_force.banner": "Detekováno výchozí administrátorské heslo — prosím změňte ho.",
+    "pwd_force.cta": "Změnit heslo",
+    "pwd_force.title": "Nastavit nové heslo",
+    "pwd_force.subtitle": "Používáte výchozí administrátorské heslo. Nastavte nové pro zabezpečení HoustonLab OS.",
 };
 
 export default cs;

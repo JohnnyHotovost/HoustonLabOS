@@ -40,10 +40,7 @@ const en = {
     "login.password": "Password",
     "login.remember": "Remember me for 30 days",
     "login.submit": "Sign in to HoustonLab OS",
-    "login.default_seed": "Default seed:",
-    "login.default_seed_note": "Change your password from Settings after first sign-in.",
-    "login.access_required": "ACCESS REQUIRED",
-    "login.secured_badge": "SECURED PERIMETER",
+    "login.tip_change": "Use the credentials provided by your administrator. Change your password from Settings after first sign-in.",
     "login.hero_title_pre": "Every job. Every device.",
     "login.hero_title_accent": "Every detail",
     "login.hero_title_post": "— remembered.",
@@ -347,6 +344,26 @@ const en = {
     "search.section.jobs": "Jobs",
     "search.section.clients": "Clients",
     "search.section.devices": "Devices",
+
+    // date range selector
+    "range.label": "Range",
+    "range.today": "Today",
+    "range.week": "This week",
+    "range.month": "This month",
+    "range.year": "This year",
+    "range.6m": "Last 6 months",
+    "range.all": "All time",
+    "range.custom": "Custom…",
+    "range.from": "From",
+    "range.to": "To",
+    "range.apply": "Apply",
+    "range.revenue_in_range": "Revenue in range",
+
+    // force password change
+    "pwd_force.banner": "Default admin password detected — please change it now.",
+    "pwd_force.cta": "Change password",
+    "pwd_force.title": "Set a new password",
+    "pwd_force.subtitle": "You're using the default admin password. Set a new one to secure HoustonLab OS.",
 };
 
 export default en;

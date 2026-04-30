@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import api from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 import { useI18n, useT, LANGUAGES } from "../i18n/I18nContext";
@@ -6,7 +7,7 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select";
-import { Save, Loader2, Lock, Globe } from "lucide-react";
+import { Save, Loader2, Lock, Globe, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 
 export default function SettingsPage() {
@@ -19,6 +20,15 @@ export default function SettingsPage() {
     const [savingS, setSavingS] = useState(false);
     const [savingP, setSavingP] = useState(false);
     const [savingPwd, setSavingPwd] = useState(false);
+    const pwdRef = useRef(null);
+    const location = useLocation();
+
+    useEffect(() => {
+        if (location.hash === "#change-password" && pwdRef.current) {
+            // give the page a tick to render
+            setTimeout(() => pwdRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
+        }
+    }, [location.hash, settings, user]);
 
     useEffect(() => {
         (async () => {
@@ -57,6 +67,7 @@ export default function SettingsPage() {
             await api.post("/auth/change-password", { current_password: pwd.current, new_password: pwd.next });
             setPwd({ current: "", next: "", confirm: "" });
             toast.success(t("settings.pwd_changed"));
+            await refreshUser();
         } catch (e) { toast.error(e?.response?.data?.detail || t("settings.failed")); }
         finally { setSavingPwd(false); }
     };
@@ -119,7 +130,16 @@ export default function SettingsPage() {
                 </div>
             </div>
 
-            <div className="hl-card p-6 space-y-5">
+            <div ref={pwdRef} id="change-password" className={`hl-card p-6 space-y-5 ${user?.must_change_password ? "border-red-500/30 ring-1 ring-red-500/20" : ""}`}>
+                {user?.must_change_password && (
+                    <div data-testid="settings-pwd-force-notice" className="flex items-start gap-3 p-3 rounded-md bg-red-500/10 border border-red-500/30 text-red-200 text-sm">
+                        <ShieldAlert className="h-4 w-4 text-red-300 mt-0.5 shrink-0" />
+                        <div>
+                            <div className="font-medium">{t("pwd_force.title")}</div>
+                            <div className="text-red-300/80 text-xs mt-0.5">{t("pwd_force.subtitle")}</div>
+                        </div>
+                    </div>
+                )}
                 <div className="flex items-center gap-2 text-base font-medium text-white"><Lock className="h-4 w-4 text-emerald-400" />{t("settings.change_password")}</div>
                 <Field label={t("settings.pwd.current")}><Input data-testid="pwd-current" type="password" value={pwd.current} onChange={(e) => setPwd({ ...pwd, current: e.target.value })} className="bg-[var(--hl-input)] border-[var(--hl-border)]" /></Field>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">

@@ -268,7 +268,13 @@ class TestJobs:
 
 # -------- UPLOADS --------
 class TestUploads:
-    def test_upload_and_attach(self, token, client):
+    def test_upload_requires_auth(self):
+        # Upload without auth should be rejected
+        files = {"file": ("test.txt", io.BytesIO(b"x"), "text/plain")}
+        r = requests.post(f"{API}/uploads", files=files)
+        assert r.status_code in (401, 403)
+
+    def test_upload_and_attach_and_authenticated_serve(self, token, client):
         # create temp job
         c = client.post(f"{API}/clients", json={"full_name": "TEST_UpC"}).json()
         job = client.post(f"{API}/jobs", json={"title": "TEST_UpJob", "category": "Other", "client_id": c["id"]}).json()
@@ -283,10 +289,13 @@ class TestUploads:
             # verify attached
             r = client.get(f"{API}/jobs/{jid}")
             assert any(a["id"] == att["id"] for a in r.json()["attachments"])
-            # serve file
-            r = requests.get(f"{BASE_URL}{att['url']}")
-            assert r.status_code == 200
-            assert b"hello houston" in r.content
+            # serve file WITHOUT auth — must be unauthorized now
+            r_noauth = requests.get(f"{BASE_URL}{att['url']}")
+            assert r_noauth.status_code in (401, 403), f"expected 401/403, got {r_noauth.status_code}"
+            # serve file WITH auth — should work
+            r_auth = requests.get(f"{BASE_URL}{att['url']}", headers={"Authorization": f"Bearer {token}"})
+            assert r_auth.status_code == 200
+            assert b"hello houston" in r_auth.content
         finally:
             client.delete(f"{API}/jobs/{jid}")
             client.delete(f"{API}/clients/{c['id']}")
@@ -294,20 +303,117 @@ class TestUploads:
 
 # -------- DASHBOARD --------
 class TestDashboard:
-    def test_stats(self, client):
+    def test_stats_default(self, client):
         r = client.get(f"{API}/dashboard/stats")
         assert r.status_code == 200
         d = r.json()
-        for k in ("counts", "revenue", "by_status", "by_category", "recent_activity", "recent_clients", "recent_devices", "upcoming"):
-            assert k in d
+        for k in ("counts", "revenue", "by_status", "by_category", "recent_activity",
+                  "recent_clients", "recent_devices", "upcoming", "series", "range"):
+            assert k in d, f"missing key {k}"
+        # revenue shape
+        assert "range" in d["revenue"] and "total" in d["revenue"]
+        # range object
+        assert "key" in d["range"] and "granularity" in d["range"]
+        # series is list of {bucket, revenue}
+        assert isinstance(d["series"], list)
+        for item in d["series"]:
+            assert "bucket" in item and "revenue" in item
 
-    def test_finance(self, client):
+    @pytest.mark.parametrize("rng", ["today", "week", "month", "year", "6m", "all"])
+    def test_stats_range_param(self, client, rng):
+        r = client.get(f"{API}/dashboard/stats", params={"range": rng})
+        assert r.status_code == 200, r.text
+        d = r.json()
+        assert d["range"]["key"] == rng
+        # Granularity is auto-picked by date span; verify it's one of the valid values
+        assert d["range"]["granularity"] in ("day", "week", "month")
+        # Sanity per-range bounds
+        if rng == "all":
+            assert d["range"]["from"] is None
+        else:
+            assert d["range"]["from"] is not None
+        assert d["range"]["to"] is not None
+
+    def test_stats_custom_range(self, client):
+        r = client.get(f"{API}/dashboard/stats", params={
+            "range": "custom",
+            "from": "2025-01-01T00:00:00+00:00",
+            "to": "2026-01-31T23:59:59+00:00",
+        })
+        assert r.status_code == 200
+        d = r.json()
+        assert d["range"]["key"] == "custom"
+        assert d["range"]["from"] is not None
+        assert d["range"]["to"] is not None
+
+    def test_finance_default(self, client):
         r = client.get(f"{API}/dashboard/finance")
         assert r.status_code == 200
         d = r.json()
-        for k in ("total_revenue", "unpaid_total", "by_category", "monthly", "unpaid_jobs", "paid_jobs"):
-            assert k in d
-        assert len(d["monthly"]) == 6
+        for k in ("total_revenue", "unpaid_total", "by_category", "series",
+                  "unpaid_jobs", "paid_jobs", "range"):
+            assert k in d, f"missing key {k}"
+        assert isinstance(d["series"], list)
+        for item in d["series"]:
+            assert "bucket" in item and "revenue" in item
+
+    def test_finance_range_month(self, client):
+        r = client.get(f"{API}/dashboard/finance", params={"range": "month"})
+        assert r.status_code == 200
+        d = r.json()
+        assert d["range"]["key"] == "month"
+        assert d["range"]["granularity"] == "day"
+
+    def test_finance_range_year(self, client):
+        r = client.get(f"{API}/dashboard/finance", params={"range": "year"})
+        assert r.status_code == 200
+        d = r.json()
+        assert d["range"]["key"] == "year"
+        assert d["range"]["granularity"] in ("day", "week", "month")
+
+
+# -------- AUDIT --------
+class TestAudit:
+    def test_audit_list(self, client):
+        r = client.get(f"{API}/audit")
+        assert r.status_code == 200
+        assert isinstance(r.json(), list)
+
+    def test_audit_unauth(self):
+        r = requests.get(f"{API}/audit")
+        assert r.status_code in (401, 403)
+
+    def test_secret_reveal_logs_audit(self, client):
+        # Create a temp job + secret, reveal it (success and denied), check audit
+        c = client.post(f"{API}/clients", json={"full_name": "TEST_AuditClient"}).json()
+        job = client.post(f"{API}/jobs", json={"title": "TEST_AuditJob", "category": "Other", "client_id": c["id"]}).json()
+        jid = job["id"]
+        try:
+            s = client.post(f"{API}/jobs/{jid}/secrets", json={"label": "AuditSecret", "value": "audit-value-001"}).json()
+            sid = s["id"]
+            # Reveal denied (wrong password)
+            r_denied = client.post(f"{API}/jobs/{jid}/secrets/{sid}/reveal", json={"password": "WRONG"})
+            assert r_denied.status_code == 401
+            # Reveal success
+            r_ok = client.post(f"{API}/jobs/{jid}/secrets/{sid}/reveal", json={"password": ADMIN_PW})
+            assert r_ok.status_code == 200
+            assert r_ok.json()["value"] == "audit-value-001"
+
+            # check audit log for events
+            r_rev = client.get(f"{API}/audit", params={"event": "secret.revealed"})
+            assert r_rev.status_code == 200
+            events_rev = r_rev.json()
+            assert any(e.get("entity_id") == sid for e in events_rev), \
+                f"secret.revealed missing for sid={sid}; got {len(events_rev)} events"
+
+            r_den = client.get(f"{API}/audit", params={"event": "secret.reveal_denied"})
+            assert r_den.status_code == 200
+            events_den = r_den.json()
+            assert any(e.get("entity_id") == sid for e in events_den), \
+                f"secret.reveal_denied missing for sid={sid}"
+        finally:
+            client.delete(f"{API}/jobs/{jid}")
+            client.delete(f"{API}/clients/{c['id']}")
 
 
 # -------- SEARCH --------
@@ -344,16 +450,33 @@ class TestProfile:
         assert r.status_code == 400
 
     def test_change_password_roundtrip_preserves_admin(self, client):
-        # change to temp then back — ensure admin pw preserved
+        # change to temp then back — ensure admin pw preserved.
+        # NOTE: backend now blocks setting new_password == DEFAULT_ADMIN_PASSWORD ('ChangeMe123!'),
+        # so we restore via direct DB write to avoid contaminating the seed credentials.
         r = client.post(f"{API}/auth/change-password", json={"current_password": ADMIN_PW, "new_password": "TempPW9999!"})
         assert r.status_code == 200
         try:
             r2 = requests.post(f"{API}/auth/login", json={"identifier": "admin", "password": "TempPW9999!"})
             assert r2.status_code == 200
+            # API rejects new == default password — verify that policy
+            r_block = client.post(f"{API}/auth/change-password", json={"current_password": "TempPW9999!", "new_password": ADMIN_PW})
+            assert r_block.status_code == 400
         finally:
-            # restore
-            r = client.post(f"{API}/auth/change-password", json={"current_password": "TempPW9999!", "new_password": ADMIN_PW})
-            assert r.status_code == 200
-            # verify
+            # Restore admin password back to ChangeMe123! via direct DB write
+            import asyncio
+            from motor.motor_asyncio import AsyncIOMotorClient
+            from dotenv import load_dotenv
+            load_dotenv("/app/backend/.env")
+            import sys
+            sys.path.insert(0, "/app/backend")
+            from auth import hash_password as _hp
+
+            async def _reset():
+                mc = AsyncIOMotorClient(os.environ["MONGO_URL"])
+                _db = mc[os.environ["DB_NAME"]]
+                await _db.users.update_one({"username": "admin"}, {"$set": {"password_hash": _hp(ADMIN_PW)}})
+                mc.close()
+
+            asyncio.get_event_loop().run_until_complete(_reset()) if False else asyncio.run(_reset())
             r3 = requests.post(f"{API}/auth/login", json={"identifier": "admin", "password": ADMIN_PW})
-            assert r3.status_code == 200
+            assert r3.status_code == 200, "Failed to restore admin password to ChangeMe123!"
