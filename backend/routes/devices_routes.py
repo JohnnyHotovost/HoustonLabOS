@@ -1,5 +1,5 @@
 """Devices routes."""
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from auth import get_current_user
 from models import Device, DeviceIn
 
@@ -54,9 +54,15 @@ async def update_device(device_id: str, payload: DeviceIn):
 
 
 @router.delete("/{device_id}")
-async def delete_device(device_id: str):
+async def delete_device(device_id: str, request: Request, user: dict = Depends(get_current_user)):
     from server import db
+    from audit import log_event
+    from auth import client_ip, user_agent
+    d = await db.devices.find_one({"id": device_id}, {"_id": 0, "name": 1})
     res = await db.devices.delete_one({"id": device_id})
     if res.deleted_count == 0:
         raise HTTPException(404, "Device not found")
+    await log_event(db, event="device.deleted", user_id=user["id"], username=user["username"],
+                    entity_type="device", entity_id=device_id, entity_label=(d or {}).get("name"),
+                    ip=client_ip(request), user_agent=user_agent(request))
     return {"ok": True}

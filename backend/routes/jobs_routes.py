@@ -1,6 +1,7 @@
 """Jobs routes — full CRUD + nested timeline/checklist/finance/secrets/attachments."""
-from fastapi import APIRouter, HTTPException, Depends
-from auth import get_current_user
+from fastapi import APIRouter, HTTPException, Depends, Request
+from auth import get_current_user, client_ip, user_agent
+from audit import log_event
 from models import (
     Job, JobIn, ChecklistItem, ChecklistItemIn, TimelineEntry, TimelineEntryIn,
     FinanceInfo, SecretIn, SecretItem, new_id, now_iso,
@@ -27,7 +28,10 @@ def _redact_secrets(job: dict) -> dict:
     """Return job without revealing secret values."""
     out = {**job}
     out["secrets"] = [
-        {"id": s["id"], "label": s["label"], "created_at": s["created_at"], "masked": mask_secret(s["encrypted_value"])}
+        {"id": s["id"], "label": s["label"],
+         "created_at": s["created_at"],
+         "updated_at": s.get("updated_at", s["created_at"]),
+         "masked": mask_secret(s["encrypted_value"])}
         for s in job.get("secrets", [])
     ]
     return out
@@ -101,11 +105,15 @@ async def update_job(job_id: str, payload: JobIn):
 
 
 @router.delete("/{job_id}")
-async def delete_job(job_id: str):
+async def delete_job(job_id: str, request: Request, user: dict = Depends(get_current_user)):
     from server import db
+    j = await db.jobs.find_one({"id": job_id}, {"_id": 0, "title": 1, "code": 1})
     res = await db.jobs.delete_one({"id": job_id})
     if res.deleted_count == 0:
         raise HTTPException(404, "Job not found")
+    await log_event(db, event="job.deleted", user_id=user["id"], username=user["username"],
+                    entity_type="job", entity_id=job_id, entity_label=(j or {}).get("title"),
+                    ip=client_ip(request), user_agent=user_agent(request))
     return {"ok": True}
 
 
@@ -177,40 +185,55 @@ async def update_finance(job_id: str, payload: FinanceInfo):
 
 # --- Secrets ---
 @router.post("/{job_id}/secrets")
-async def add_secret(job_id: str, payload: SecretIn):
+async def add_secret(job_id: str, payload: SecretIn, request: Request, user: dict = Depends(get_current_user)):
     from server import db
     item = {
         "id": new_id(),
         "label": payload.label,
         "encrypted_value": encrypt_secret(payload.value),
         "created_at": now_iso(),
+        "updated_at": now_iso(),
     }
     res = await db.jobs.update_one({"id": job_id}, {"$push": {"secrets": item}, "$set": {"updated_at": now_iso()}})
     if res.matched_count == 0:
         raise HTTPException(404, "Job not found")
-    return {"id": item["id"], "label": item["label"], "created_at": item["created_at"], "masked": mask_secret(item["encrypted_value"])}
+    await log_event(db, event="secret.created", user_id=user["id"], username=user["username"],
+                    entity_type="secret", entity_id=item["id"], entity_label=payload.label,
+                    ip=client_ip(request), user_agent=user_agent(request), meta={"job_id": job_id})
+    return {"id": item["id"], "label": item["label"], "created_at": item["created_at"],
+            "updated_at": item["updated_at"], "masked": mask_secret(item["encrypted_value"])}
 
 
 @router.post("/{job_id}/secrets/{secret_id}/reveal")
-async def reveal_secret(job_id: str, secret_id: str, body: dict, user: dict = Depends(get_current_user)):
+async def reveal_secret(job_id: str, secret_id: str, body: dict, request: Request, user: dict = Depends(get_current_user)):
     """Reveal a secret. Requires admin password confirmation."""
     from server import db
     from auth import verify_password
     password = body.get("password", "")
     db_user = await db.users.find_one({"id": user["id"]})
     if not db_user or not verify_password(password, db_user["password_hash"]):
+        await log_event(db, event="secret.reveal_denied", user_id=user["id"], username=user["username"],
+                        entity_type="secret", entity_id=secret_id,
+                        ip=client_ip(request), user_agent=user_agent(request), success=False,
+                        meta={"job_id": job_id})
         raise HTTPException(401, "Password confirmation required")
     j = await db.jobs.find_one({"id": job_id}, {"_id": 0, "secrets": 1})
     if not j:
         raise HTTPException(404, "Job not found")
     for s in j.get("secrets", []):
         if s["id"] == secret_id:
+            await log_event(db, event="secret.revealed", user_id=user["id"], username=user["username"],
+                            entity_type="secret", entity_id=secret_id, entity_label=s.get("label"),
+                            ip=client_ip(request), user_agent=user_agent(request), meta={"job_id": job_id})
             return {"id": secret_id, "value": decrypt_secret(s["encrypted_value"])}
     raise HTTPException(404, "Secret not found")
 
 
 @router.delete("/{job_id}/secrets/{secret_id}")
-async def delete_secret(job_id: str, secret_id: str):
+async def delete_secret(job_id: str, secret_id: str, request: Request, user: dict = Depends(get_current_user)):
     from server import db
     await db.jobs.update_one({"id": job_id}, {"$pull": {"secrets": {"id": secret_id}}, "$set": {"updated_at": now_iso()}})
+    await log_event(db, event="secret.deleted", user_id=user["id"], username=user["username"],
+                    entity_type="secret", entity_id=secret_id,
+                    ip=client_ip(request), user_agent=user_agent(request), meta={"job_id": job_id})
     return {"ok": True}

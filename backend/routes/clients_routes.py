@@ -1,5 +1,5 @@
 """Clients routes."""
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from auth import get_current_user
 from models import Client, ClientIn, now_iso, new_id
 
@@ -64,9 +64,15 @@ async def update_client(client_id: str, payload: ClientIn):
 
 
 @router.delete("/{client_id}")
-async def delete_client(client_id: str):
+async def delete_client(client_id: str, request: Request, user: dict = Depends(get_current_user)):
     from server import db
+    from audit import log_event
+    from auth import client_ip, user_agent
+    c = await db.clients.find_one({"id": client_id}, {"_id": 0, "full_name": 1})
     res = await db.clients.delete_one({"id": client_id})
     if res.deleted_count == 0:
         raise HTTPException(404, "Client not found")
+    await log_event(db, event="client.deleted", user_id=user["id"], username=user["username"],
+                    entity_type="client", entity_id=client_id, entity_label=(c or {}).get("full_name"),
+                    ip=client_ip(request), user_agent=user_agent(request))
     return {"ok": True}

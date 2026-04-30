@@ -326,6 +326,7 @@ async def seed_admin(db):
             "password_hash": hash_password(admin_password),
             "name": "HoustonLab Admin",
             "role": "admin",
+            "must_change_password": True,
             "created_at": now_iso(),
         })
 

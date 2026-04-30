@@ -1,31 +1,66 @@
-"""JWT + bcrypt authentication helpers."""
+"""JWT + Argon2id password hashing (bcrypt fallback for legacy hashes)."""
 import os
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 import bcrypt
 import jwt
+from argon2 import PasswordHasher
+from argon2.exceptions import VerifyMismatchError, InvalidHashError, VerificationError
 from fastapi import HTTPException, Request, Depends
 
 JWT_ALGORITHM = "HS256"
-ACCESS_TOKEN_MIN = 60 * 8  # 8 hours
-REMEMBER_ME_DAYS = 30
+ACCESS_TOKEN_MIN = 60 * 8          # 8 hours — default session
+REMEMBER_ME_DAYS = 30              # 30 days when "remember me"
+DEFAULT_ADMIN_PASSWORD = "ChangeMe123!"
+
+# Argon2id hasher (RFC 9106 / OWASP-recommended parameters, practical on a home server)
+_ph = PasswordHasher(time_cost=3, memory_cost=64 * 1024, parallelism=2, hash_len=32, salt_len=16)
 
 
 def _secret() -> str:
     return os.environ["JWT_SECRET"]
 
 
+def is_production() -> bool:
+    return os.environ.get("APP_ENV", "development").lower() == "production"
+
+
+def cookie_secure() -> bool:
+    # Explicit override wins; otherwise auto-enable in production.
+    flag = os.environ.get("COOKIE_SECURE")
+    if flag is not None:
+        return flag.lower() in ("1", "true", "yes")
+    return is_production()
+
+
 def hash_password(password: str) -> str:
-    salt = bcrypt.gensalt()
-    return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
+    """Hash a password with Argon2id."""
+    return _ph.hash(password)
 
 
-def verify_password(plain: str, hashed: str) -> bool:
-    try:
-        return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
-    except Exception:
+def verify_password(plain: str, stored: str) -> bool:
+    """Verify a password against either an Argon2id or a legacy bcrypt hash."""
+    if not stored:
         return False
+    try:
+        if stored.startswith("$argon2"):
+            _ph.verify(stored, plain)
+            return True
+        if stored.startswith("$2"):  # bcrypt $2a$/$2b$/$2y$
+            return bcrypt.checkpw(plain.encode("utf-8"), stored.encode("utf-8"))
+    except (VerifyMismatchError, InvalidHashError, VerificationError, ValueError):
+        return False
+    return False
+
+
+def needs_rehash(stored: str) -> bool:
+    if not stored or not stored.startswith("$argon2"):
+        return True
+    try:
+        return _ph.check_needs_rehash(stored)
+    except Exception:
+        return True
 
 
 def create_access_token(user_id: str, email: str, remember: bool = False) -> str:
@@ -42,6 +77,7 @@ def decode_token(token: str) -> dict:
 
 
 def extract_token(request: Request) -> Optional[str]:
+    # Prefer httpOnly cookie; Authorization header fallback for API tooling.
     token = request.cookies.get("access_token")
     if token:
         return token
@@ -68,3 +104,14 @@ async def get_current_user(request: Request) -> dict:
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
     return user
+
+
+def client_ip(request: Request) -> str:
+    xff = request.headers.get("x-forwarded-for")
+    if xff:
+        return xff.split(",")[0].strip()
+    return request.client.host if request.client else "-"
+
+
+def user_agent(request: Request) -> str:
+    return request.headers.get("user-agent", "-")
