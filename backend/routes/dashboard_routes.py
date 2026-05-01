@@ -12,8 +12,9 @@ def _strip_finance_for_role(role: str, payload: dict) -> dict:
     if role != "spectator":
         return payload
     out = dict(payload)
-    out["revenue"] = {"range": 0, "total": 0, "currency": payload.get("revenue", {}).get("currency", "CZK")}
-    out["profit"] = {"range": 0, "total": 0, "currency": "CZK"}
+    currency = payload.get("revenue", {}).get("currency", "CZK")
+    out["revenue"] = {"range": 0, "total": 0, "currency": currency}
+    out["profit"] = {"range": 0, "total": 0, "currency": currency}
     return out
 
 

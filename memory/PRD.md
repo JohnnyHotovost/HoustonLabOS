@@ -56,23 +56,40 @@ Build a premium full-stack web application called **HoustonLab OS** — a privat
 - **Backend**: new `GET /api/audit/summary?range=…` returns `{range, counts:{login_success, login_failed, secret_revealed, secret_reveal_denied, secret_copied, secret_created, secret_deleted, file_viewed, file_uploaded, file_deleted, deletions, settings_updated}, raw}`.
 - **Frontend `secret.copied` audit**: clicking *Copy* on a revealed secret fires `POST /api/jobs/{job_id}/secrets/{sid}/copied` (audit-only — never sends the value). Endpoint stores `entity_label` (label) + `meta.job_id` and IP/UA. Verified by 16 new pytest tests including a load-bearing "no plaintext leak" assertion.
 
+### RBAC + Profit + Templates split + Reports + MoneyInput (iteration 6 — May 1, 2026)
+- **Roles**: `admin`, `collaborator`, `spectator`. Backend helpers `require_role(...)` + `require_min_role(...)`; enforced on all create/update/delete endpoints across jobs/clients/devices/templates/uploads.
+- **Users management** (admin-only) at `/users`: full CRUD + role change + password reset + last-admin guard. Audit events `user.created/updated/role_changed/password_reset/deleted`. Username editable from Settings (with uniqueness checks). `last_login_at` tracked on login.
+- **Permissions per role**:
+  - Spectator → read-only; `/api/dashboard/finance` blocked (403); `/api/dashboard/stats` strips revenue/profit; sidebar hides Finance/Audit/Users; JobDetail Finance tab hidden; secret reveal blocked.
+  - Collaborator → can create/update jobs/clients/devices/files/checklist/timeline + add secrets; cannot delete entities, cannot reveal/delete secrets, cannot manage users/templates.
+  - Admin → everything (existing behaviour).
+- **Profit tracking**: new `parts_cost` + `other_costs` fields on FinanceInfo. `Profit = paid_amount − (parts_cost + other_costs)`. Surfaced on Finance KPIs (Revenue + Profit + Outstanding + Avg), 2-series bar chart, by-category profit breakdown, JobDetail Finance summary card (Customer total / Internal cost / Profit), Dashboard revenue KPI hint. New backend keys: `dashboard/stats.profit:{range,total,currency}`; `dashboard/finance.total_profit + avg_profit + by_category[].profit + series[].profit + total_internal_cost + paid_jobs[].profit`.
+- **MoneyInput** component replaces raw `<Input type="number">` for money fields; selects-all when value is 0 on focus, allows clearing while typing, commits to 0 on blur.
+- **Templates split** (idempotent seed by name; old templates retained for compatibility):
+  - Laptop Service → Laptop Repair + Laptop Cleaning
+  - Console Service → Console Cleaning (cleaning-focused)
+  - Networking / UniFi Setup → General Network Setup + UniFi Setup
+  - NAS / Server Setup → NAS Setup + Server Setup
+- **Job Sheet / Customer Report** at `/reports` (sidebar nav) and `/reports/job/:id` (button on JobDetail). Print-ready document with brand header, client/device, dates, status, summary, work-performed timeline, checklist summary, customer-visible photos, price summary. Toggles for prices / checklist / photos. Browser print-to-PDF works today; server-side PDF endpoint is a follow-up. **Strict exclusions**: internal_notes, secrets, audit data, system info.
+
 ## Backend response shape (current)
 - `GET /api/dashboard/stats?range=...` → `{ counts, revenue:{range,total,currency}, range:{key,from,to,granularity}, series:[{bucket,revenue}], by_status, by_category, recent_activity, recent_clients, recent_devices, upcoming }`
 - `GET /api/dashboard/finance?range=...` → `{ total_revenue, unpaid_total, paid_count, unpaid_count, avg_job_value, by_category, series:[{bucket,revenue}], unpaid_jobs, paid_jobs, range, currency }`
 
 ## Testing
-- `/app/backend/tests/backend_test.py` + `test_audit_new.py` + `test_security_card.py` — 62 pytest tests, 100% pass.
-- Iterations: `iteration_1.json` (MVP) · `iteration_2.json` (security + frontend) · `iteration_3.json` (custom-range fix) · `iteration_4.json` (audit log + range order + tooltip fix) · `iteration_5.json` (security card + secret.copied).
+- 80 / 82 backend pytest pass. 2 pre-existing failures in `backend_test.py` are data drift (admin email was changed to a real address via the new profile edit UI; legacy tests hardcode `admin@houstonlab.local`).
+- Iterations: `iteration_1.json` (MVP) · `iteration_2.json` (security + frontend) · `iteration_3.json` (custom-range fix) · `iteration_4.json` (audit log + range order + tooltip fix) · `iteration_5.json` (security card + secret.copied) · `iteration_6.json` (RBAC + profit + templates + Users + Reports + MoneyInput).
 
 ## Backlog (P1)
+- Server-side PDF endpoint for the Customer Report (current Print → "Save as PDF" works; user already approved both — server-side is the next step).
 - Photo before/after comparison slider in gallery.
 - Bulk actions in jobs list (set status, archive).
-- Export client report PDF.
-- Custom template editor (currently fields/checklist editable only via API).
+- Custom template editor UI (currently only via API; admin-only).
 - Webhooks/notifications (email or telegram on job status change).
 - Migrate `@app.on_event` to FastAPI lifespan.
 - Restrict CORS allow_origins to explicit list when credentials are enabled.
 - Track `secret.copied` audit events from the frontend for full sensitivity history.
+- Fix `backend_test.py` legacy auth tests to read admin email from `/auth/me` instead of hardcoded values.
 
 ## Backlog (P2)
 - Multi-user support with roles (technician/admin).
