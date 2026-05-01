@@ -1,6 +1,6 @@
 """Clients routes."""
 from fastapi import APIRouter, HTTPException, Depends, Request
-from auth import get_current_user
+from auth import get_current_user, require_min_role, require_role
 from models import Client, ClientIn, now_iso, new_id
 
 router = APIRouter(prefix="/clients", tags=["clients"], dependencies=[Depends(get_current_user)])
@@ -33,7 +33,7 @@ async def list_clients():
 
 
 @router.post("")
-async def create_client(payload: ClientIn):
+async def create_client(payload: ClientIn, user: dict = Depends(require_min_role("collaborator"))):
     from server import db
     doc = Client(**payload.model_dump()).model_dump()
     await db.clients.insert_one(doc)
@@ -54,7 +54,7 @@ async def get_client(client_id: str):
 
 
 @router.put("/{client_id}")
-async def update_client(client_id: str, payload: ClientIn):
+async def update_client(client_id: str, payload: ClientIn, user: dict = Depends(require_min_role("collaborator"))):
     from server import db
     update = payload.model_dump()
     res = await db.clients.update_one({"id": client_id}, {"$set": update})
@@ -64,7 +64,7 @@ async def update_client(client_id: str, payload: ClientIn):
 
 
 @router.delete("/{client_id}")
-async def delete_client(client_id: str, request: Request, user: dict = Depends(get_current_user)):
+async def delete_client(client_id: str, request: Request, user: dict = Depends(require_role("admin"))):
     from server import db
     from audit import log_event
     from auth import client_ip, user_agent

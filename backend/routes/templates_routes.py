@@ -2,7 +2,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import List, Optional
-from auth import get_current_user
+from auth import get_current_user, require_role
 from models import JobTemplate, CustomFieldDef, now_iso, new_id
 
 router = APIRouter(prefix="/templates", tags=["templates"], dependencies=[Depends(get_current_user)])
@@ -28,7 +28,7 @@ async def list_templates():
 
 
 @router.post("")
-async def create_template(payload: TemplateIn):
+async def create_template(payload: TemplateIn, user: dict = Depends(require_role("admin"))):
     from server import db
     doc = {
         "id": new_id(),
@@ -51,7 +51,7 @@ async def get_template(template_id: str):
 
 
 @router.put("/{template_id}")
-async def update_template(template_id: str, payload: TemplateIn):
+async def update_template(template_id: str, payload: TemplateIn, user: dict = Depends(require_role("admin"))):
     from server import db
     res = await db.templates.update_one({"id": template_id}, {"$set": payload.model_dump()})
     if res.matched_count == 0:
@@ -60,7 +60,7 @@ async def update_template(template_id: str, payload: TemplateIn):
 
 
 @router.delete("/{template_id}")
-async def delete_template(template_id: str):
+async def delete_template(template_id: str, user: dict = Depends(require_role("admin"))):
     from server import db
     t = await db.templates.find_one({"id": template_id})
     if not t:

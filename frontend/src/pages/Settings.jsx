@@ -15,7 +15,7 @@ export default function SettingsPage() {
     const { lang, setLang } = useI18n();
     const t = useT();
     const [settings, setSettings] = useState(null);
-    const [profile, setProfile] = useState({ name: "", email: "" });
+    const [profile, setProfile] = useState({ username: "", name: "", email: "" });
     const [pwd, setPwd] = useState({ current: "", next: "", confirm: "" });
     const [savingS, setSavingS] = useState(false);
     const [savingP, setSavingP] = useState(false);
@@ -37,7 +37,7 @@ export default function SettingsPage() {
         })();
     }, []);
     useEffect(() => {
-        if (user) setProfile({ name: user.name || "", email: user.email || "" });
+        if (user) setProfile({ username: user.username || "", name: user.name || "", email: user.email || "" });
     }, [user]);
 
     const saveSettings = async () => {
@@ -120,7 +120,9 @@ export default function SettingsPage() {
 
             <div className="hl-card p-6 space-y-5">
                 <div className="text-base font-medium text-white">{t("settings.profile")}</div>
-                <Field label={t("settings.username")}><Input value={user.username} disabled className="bg-[var(--hl-input)] border-[var(--hl-border)] opacity-60" /></Field>
+                <Field label={t("settings.username")}>
+                    <Input data-testid="profile-username" value={profile.username} onChange={(e) => setProfile({ ...profile, username: e.target.value })} className="bg-[var(--hl-input)] border-[var(--hl-border)]" />
+                </Field>
                 <Field label={t("settings.display_name")}><Input data-testid="profile-name" value={profile.name} onChange={(e) => setProfile({ ...profile, name: e.target.value })} className="bg-[var(--hl-input)] border-[var(--hl-border)]" /></Field>
                 <Field label={t("settings.email")}><Input data-testid="profile-email" value={profile.email} onChange={(e) => setProfile({ ...profile, email: e.target.value })} className="bg-[var(--hl-input)] border-[var(--hl-border)]" /></Field>
                 <div className="flex justify-end">

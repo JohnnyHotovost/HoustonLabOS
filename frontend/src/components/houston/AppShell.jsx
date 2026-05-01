@@ -1,4 +1,4 @@
-import { LayoutGrid, Briefcase, Users, Cpu, Wallet, FileCode2, Settings as SettingsIcon, ShieldCheck, LogOut, Search, Plus, Command, ZapIcon } from "lucide-react";
+import { LayoutGrid, Briefcase, Users, Cpu, Wallet, FileCode2, FileCheck2, Settings as SettingsIcon, ShieldCheck, LogOut, Search, Plus, Command, ZapIcon } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useT } from "../../i18n/I18nContext";
@@ -13,11 +13,20 @@ const NAV_KEYS = [
     { to: "/jobs", key: "nav.jobs", icon: Briefcase, testKey: "jobs" },
     { to: "/clients", key: "nav.clients", icon: Users, testKey: "clients" },
     { to: "/devices", key: "nav.devices", icon: Cpu, testKey: "devices" },
-    { to: "/finance", key: "nav.finance", icon: Wallet, testKey: "finance" },
+    { to: "/finance", key: "nav.finance", icon: Wallet, testKey: "finance", hideForRoles: ["spectator"] },
+    { to: "/reports", key: "nav.reports", icon: FileCheck2, testKey: "reports" },
     { to: "/templates", key: "nav.templates", icon: FileCode2, testKey: "templates" },
-    { to: "/audit", key: "nav.audit", icon: ShieldCheck, testKey: "audit" },
+    { to: "/audit", key: "nav.audit", icon: ShieldCheck, testKey: "audit", minRole: "admin" },
+    { to: "/users", key: "nav.users", icon: Users, testKey: "users", minRole: "admin" },
     { to: "/settings", key: "nav.settings", icon: SettingsIcon, testKey: "settings" },
 ];
+
+const ROLE_RANK = { admin: 3, collaborator: 2, spectator: 1 };
+function navItemVisible(item, role) {
+    if (item.hideForRoles?.includes(role)) return false;
+    if (item.minRole && (ROLE_RANK[role] || 0) < (ROLE_RANK[item.minRole] || 0)) return false;
+    return true;
+}
 
 function Sidebar() {
     const { user, logout } = useAuth();
@@ -37,7 +46,7 @@ function Sidebar() {
 
             <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
                 <div className="px-2 mb-2 text-[10px] font-mono uppercase tracking-widest text-zinc-600">{t("nav.workspace")}</div>
-                {NAV_KEYS.map(({ to, key, icon: Icon, end, testKey }) => (
+                {NAV_KEYS.filter(item => navItemVisible(item, user?.role || "admin")).map(({ to, key, icon: Icon, end, testKey }) => (
                     <NavLink
                         key={to}
                         to={to}

@@ -56,9 +56,9 @@ export default function FinancePage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                 <StatCard label={t("finance.kpi.total_revenue")} value={fmtMoney(data.total_revenue)} hint={t("finance.kpi.paid_count", { n: data.paid_count })} icon={Wallet} accent="bg-emerald-500/10 text-emerald-300" />
+                <StatCard label={t("finance.kpi.total_profit")} value={fmtMoney(data.total_profit)} hint={t("finance.kpi.profit_hint")} icon={TrendingUp} accent="bg-emerald-500/10 text-emerald-300" />
                 <StatCard label={t("finance.kpi.outstanding")} value={fmtMoney(data.unpaid_total)} hint={t("finance.kpi.unpaid_count", { n: data.unpaid_count })} icon={AlertTriangle} accent="bg-red-500/10 text-red-300" />
-                <StatCard label={t("finance.kpi.avg")} value={fmtMoney(Math.round(data.avg_job_value))} hint={t("finance.kpi.avg_hint")} icon={TrendingUp} accent="bg-cyan-500/10 text-cyan-300" />
-                <StatCard label={t("finance.kpi.categories")} value={data.by_category.length} hint={t("finance.kpi.active")} icon={BarChart2} accent="bg-indigo-500/10 text-indigo-300" />
+                <StatCard label={t("finance.kpi.avg")} value={fmtMoney(Math.round(data.avg_job_value))} hint={t("finance.kpi.avg_hint")} icon={BarChart2} accent="bg-cyan-500/10 text-cyan-300" />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
@@ -81,17 +81,19 @@ export default function FinancePage() {
                                         </div>
                                     ) : null)}
                                 />
-                                <Bar dataKey="revenue" fill="#34d399" radius={[6, 6, 0, 0]} />
+                                <Bar dataKey="revenue" name={t("finance.kpi.total_revenue")} fill="#34d399" radius={[6, 6, 0, 0]} />
+                                <Bar dataKey="profit" name={t("finance.kpi.total_profit")} fill="#22d3ee" radius={[6, 6, 0, 0]} />
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
                 </div>
                 <div className="hl-card p-6">
                     <div className="text-base font-medium text-white mb-4">{t("finance.by_category_title")}</div>
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                         {data.by_category.sort((a, b) => b.revenue - a.revenue).map((c) => {
                             const max = Math.max(...data.by_category.map((x) => x.revenue || 0), 1);
-                            const pct = Math.round((c.revenue / max) * 100);
+                            const pct = Math.round(((c.revenue || 0) / max) * 100);
+                            const profitPct = c.revenue > 0 ? Math.round((c.profit / c.revenue) * 100) : 0;
                             return (
                                 <div key={c.category}>
                                     <div className="flex justify-between text-xs mb-1">
@@ -100,6 +102,10 @@ export default function FinancePage() {
                                     </div>
                                     <div className="h-1.5 rounded-full bg-zinc-800 overflow-hidden">
                                         <div className="h-full bg-emerald-500" style={{ width: `${pct}%` }} />
+                                    </div>
+                                    <div className="flex justify-between text-[10px] hl-mono mt-1 text-zinc-500">
+                                        <span>{t("finance.by_category_profit")}: <span className="text-emerald-300">{fmtMoney(c.profit)}</span></span>
+                                        <span>{profitPct}%</span>
                                     </div>
                                 </div>
                             );

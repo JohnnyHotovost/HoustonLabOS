@@ -1,15 +1,36 @@
 """Dashboard stats + finance summary with flexible date ranges."""
 from datetime import datetime, timezone, timedelta
 from collections import defaultdict
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 from auth import get_current_user
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"], dependencies=[Depends(get_current_user)])
 
 
+def _strip_finance_for_role(role: str, payload: dict) -> dict:
+    """Spectators do not see money. Strip finance keys from dashboard responses."""
+    if role != "spectator":
+        return payload
+    out = dict(payload)
+    out["revenue"] = {"range": 0, "total": 0, "currency": payload.get("revenue", {}).get("currency", "CZK")}
+    out["profit"] = {"range": 0, "total": 0, "currency": "CZK"}
+    return out
+
+
 def _job_total(j):
     f = j.get("finance", {}) or {}
     return (f.get("labor_price", 0) or 0) + (f.get("parts_price", 0) or 0) - (f.get("discount", 0) or 0)
+
+
+def _job_internal_cost(j):
+    f = j.get("finance", {}) or {}
+    return (f.get("parts_cost", 0) or 0) + (f.get("other_costs", 0) or 0)
+
+
+def _job_profit(j):
+    f = j.get("finance", {}) or {}
+    paid = f.get("paid_amount", 0) or 0
+    return paid - _job_internal_cost(j)
 
 
 def _parse_iso(s):
@@ -81,6 +102,7 @@ async def get_stats(
     range: str = Query("6m", alias="range"),
     from_: str | None = Query(None, alias="from"),
     to: str | None = Query(None),
+    user: dict = Depends(get_current_user),
 ):
     from server import db
     jobs = await db.jobs.find({}, {"_id": 0}).to_list(5000)
@@ -95,12 +117,16 @@ async def get_stats(
 
     total_revenue = 0
     range_revenue = 0
+    range_profit = 0
+    total_profit = 0
     for j in jobs:
         paid = j.get("finance", {}).get("paid_amount", 0) or 0
         pd = _parse_iso(j.get("finance", {}).get("payment_date"))
         total_revenue += paid
+        total_profit += _job_profit(j)
         if _in_range(pd, start, end):
             range_revenue += paid
+            range_profit += _job_profit(j)
 
     by_status = defaultdict(int)
     by_category = defaultdict(int)
@@ -138,9 +164,10 @@ async def get_stats(
             buckets[_bucket_key(pd, granularity)] += paid
     series = [{"bucket": k, "revenue": v} for k, v in sorted(buckets.items())]
 
-    return {
+    return _strip_finance_for_role(user.get("role", "admin"), {
         "counts": {"active": active, "completed": completed, "unpaid": unpaid, "cancelled": cancelled, "total": len(jobs)},
         "revenue": {"range": range_revenue, "total": total_revenue, "currency": "CZK"},
+        "profit": {"range": range_profit, "total": total_profit, "currency": "CZK"},
         "range": {"key": range, "from": start.isoformat() if start else None, "to": end.isoformat() if end else None, "granularity": granularity},
         "series": series,
         "by_status": dict(by_status),
@@ -149,7 +176,7 @@ async def get_stats(
         "recent_clients": clients,
         "recent_devices": devices,
         "upcoming": upcoming,
-    }
+    })
 
 
 @router.get("/finance")
@@ -157,18 +184,23 @@ async def get_finance(
     range: str = Query("6m", alias="range"),
     from_: str | None = Query(None, alias="from"),
     to: str | None = Query(None),
+    user: dict = Depends(get_current_user),
 ):
+    if (user.get("role") or "admin") == "spectator":
+        raise HTTPException(403, "Insufficient permissions")
     from server import db
     jobs = await db.jobs.find({}, {"_id": 0}).to_list(5000)
     start, end = _range_bounds(range, from_, to)
     granularity = _pick_granularity(start, end)
 
     total_revenue = 0
+    total_profit = 0
+    total_internal_cost = 0
     unpaid_total = 0
     paid_jobs = []
     unpaid_jobs = []
-    by_category = defaultdict(lambda: {"revenue": 0, "count": 0})
-    buckets = defaultdict(float)
+    by_category = defaultdict(lambda: {"revenue": 0, "profit": 0, "count": 0})
+    buckets = defaultdict(lambda: {"revenue": 0.0, "profit": 0.0})
     avg_total = 0
     avg_count = 0
 
@@ -177,21 +209,27 @@ async def get_finance(
         pd = _parse_iso(f.get("payment_date"))
         paid = f.get("paid_amount", 0) or 0
         total = _job_total(j)
+        internal = _job_internal_cost(j)
+        profit = paid - internal
         in_r = _in_range(pd, start, end) if pd else False
 
         if f.get("payment_status") == "Paid" and in_r:
             paid_jobs.append({"id": j["id"], "code": j.get("code"), "title": j["title"],
-                              "amount": paid, "date": f.get("payment_date"), "category": j["category"]})
+                              "amount": paid, "profit": profit, "date": f.get("payment_date"), "category": j["category"]})
             total_revenue += paid
+            total_profit += profit
+            total_internal_cost += internal
             by_category[j["category"]]["revenue"] += paid
+            by_category[j["category"]]["profit"] += profit
             by_category[j["category"]]["count"] += 1
             if total > 0:
                 avg_total += total
                 avg_count += 1
             if pd:
-                buckets[_bucket_key(pd, granularity)] += paid
+                key = _bucket_key(pd, granularity)
+                buckets[key]["revenue"] += paid
+                buckets[key]["profit"] += profit
         elif f.get("payment_status") in ("Unpaid", "Partial"):
-            # Outstanding is shown independent of range (it's "current owed")
             outstanding = max(total - paid, 0)
             if outstanding > 0:
                 unpaid_total += outstanding
@@ -200,14 +238,18 @@ async def get_finance(
                                     "category": j["category"]})
 
     avg_value = (avg_total / avg_count) if avg_count else 0
-    series = [{"bucket": k, "revenue": v} for k, v in sorted(buckets.items())]
+    avg_profit = (total_profit / avg_count) if avg_count else 0
+    series = [{"bucket": k, "revenue": v["revenue"], "profit": v["profit"]} for k, v in sorted(buckets.items())]
 
     return {
         "total_revenue": total_revenue,
+        "total_profit": total_profit,
+        "total_internal_cost": total_internal_cost,
         "unpaid_total": unpaid_total,
         "paid_count": len(paid_jobs),
         "unpaid_count": len(unpaid_jobs),
         "avg_job_value": avg_value,
+        "avg_profit": avg_profit,
         "by_category": [{"category": k, **v} for k, v in by_category.items()],
         "series": series,
         "unpaid_jobs": sorted(unpaid_jobs, key=lambda x: -x["amount"])[:50],

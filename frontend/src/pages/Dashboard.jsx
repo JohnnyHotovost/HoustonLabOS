@@ -6,6 +6,7 @@ import { useT } from "../i18n/I18nContext";
 import { StatusBadge, PriorityBadge } from "../components/houston/Badges";
 import RangePicker, { rangeParams, formatBucketLabel } from "../components/houston/RangePicker";
 import SecurityCard from "../components/houston/SecurityCard";
+import { useAuth } from "../context/AuthContext";
 import { Briefcase, CheckCircle2, AlertCircle, Wallet, ArrowUpRight, Calendar, Activity, Plus, Cpu, Users } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Skeleton } from "../components/ui/skeleton";
@@ -38,22 +39,23 @@ export default function Dashboard() {
     const [stats, setStats] = useState(null);
     const [finance, setFinance] = useState(null);
     const [range, setRange] = useState({ key: "6m" }); // Dashboard default: Last 6 months
+    const { user } = useAuth();
     const t = useT();
+    const isSpectator = user?.role === "spectator";
 
     useEffect(() => {
         let cancel = false;
         (async () => {
             const params = rangeParams(range);
-            const [s, f] = await Promise.all([
-                api.get("/dashboard/stats", { params }),
-                api.get("/dashboard/finance", { params }),
-            ]);
+            const tasks = [api.get("/dashboard/stats", { params })];
+            if (!isSpectator) tasks.push(api.get("/dashboard/finance", { params }));
+            const results = await Promise.all(tasks);
             if (cancel) return;
-            setStats(s.data);
-            setFinance(f.data);
+            setStats(results[0].data);
+            setFinance(isSpectator ? { unpaid_total: 0, total_revenue: 0, total_profit: 0 } : results[1].data);
         })();
         return () => { cancel = true; };
-    }, [range]);
+    }, [range, isSpectator]);
 
     if (!stats || !finance) {
         return (
@@ -85,8 +87,18 @@ export default function Dashboard() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                 <StatCard testId="kpi-active" label={t("dashboard.kpi.active")} value={stats.counts.active} hint={t("dashboard.kpi.total_total", { n: stats.counts.total })} icon={Briefcase} accent="bg-cyan-500/10 text-cyan-300" />
                 <StatCard testId="kpi-completed" label={t("dashboard.kpi.completed")} value={stats.counts.completed} hint={t("dashboard.kpi.alltime")} icon={CheckCircle2} accent="bg-emerald-500/10 text-emerald-300" />
-                <StatCard testId="kpi-unpaid" label={t("dashboard.kpi.unpaid")} value={stats.counts.unpaid} hint={t("dashboard.kpi.outstanding", { amount: fmtMoney(finance.unpaid_total) })} icon={AlertCircle} accent="bg-red-500/10 text-red-300" />
-                <StatCard testId="kpi-revenue" label={t("range.revenue_in_range")} value={fmtMoney(stats.revenue.range)} hint={t("dashboard.kpi.total_hint", { amount: fmtMoney(stats.revenue.total) })} icon={Wallet} accent="bg-emerald-500/10 text-emerald-300" />
+                {!isSpectator && (
+                    <>
+                        <StatCard testId="kpi-revenue" label={t("range.revenue_in_range")} value={fmtMoney(stats.revenue.range)} hint={t("dashboard.kpi.profit_hint", { profit: fmtMoney(stats.profit?.range || 0) })} icon={Wallet} accent="bg-emerald-500/10 text-emerald-300" />
+                        <StatCard testId="kpi-unpaid" label={t("dashboard.kpi.unpaid")} value={stats.counts.unpaid} hint={t("dashboard.kpi.outstanding", { amount: fmtMoney(finance.unpaid_total) })} icon={AlertCircle} accent="bg-red-500/10 text-red-300" />
+                    </>
+                )}
+                {isSpectator && (
+                    <>
+                        <StatCard testId="kpi-cancelled" label={t("dashboard.kpi.cancelled") || "Cancelled"} value={stats.counts.cancelled || 0} hint="" icon={AlertCircle} accent="bg-zinc-500/10 text-zinc-300" />
+                        <StatCard testId="kpi-total" label={t("dashboard.kpi.total") || "Total"} value={stats.counts.total} hint={t("dashboard.kpi.alltime")} icon={Briefcase} accent="bg-zinc-500/10 text-zinc-300" />
+                    </>
+                )}
             </div>
 
             {/* Chart + Activity */}

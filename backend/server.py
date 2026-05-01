@@ -64,6 +64,7 @@ from routes.dashboard_routes import router as dashboard_router
 from routes.settings_routes import router as settings_router
 from routes.search_routes import router as search_router
 from routes.audit_routes import router as audit_router
+from routes.users_routes import router as users_router
 
 api_router.include_router(auth_router)
 api_router.include_router(clients_router)
@@ -76,6 +77,7 @@ api_router.include_router(dashboard_router)
 api_router.include_router(settings_router)
 api_router.include_router(search_router)
 api_router.include_router(audit_router)
+api_router.include_router(users_router)
 
 
 @api_router.get("/")

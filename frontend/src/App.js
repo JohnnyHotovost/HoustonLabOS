@@ -18,6 +18,8 @@ import FinancePage from "./pages/Finance";
 import TemplatesPage from "./pages/Templates";
 import SettingsPage from "./pages/Settings";
 import AuditLog from "./pages/AuditLog";
+import UsersPage from "./pages/Users";
+import Reports from "./pages/Reports";
 import AppShell from "./components/houston/AppShell";
 
 function ProtectedShell() {
@@ -58,6 +60,9 @@ export default function App() {
                         <Route path="/finance" element={<FinancePage />} />
                         <Route path="/templates" element={<TemplatesPage />} />
                         <Route path="/audit" element={<AuditLog />} />
+                        <Route path="/users" element={<UsersPage />} />
+                        <Route path="/reports" element={<Reports />} />
+                        <Route path="/reports/job/:id" element={<Reports />} />
                         <Route path="/settings" element={<SettingsPage />} />
                     </Route>
                     <Route path="*" element={<Navigate to="/" replace />} />

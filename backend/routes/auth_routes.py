@@ -61,12 +61,15 @@ async def login(request: Request, payload: LoginPayload, response: Response):
 
     token = create_access_token(user["id"], user["email"], remember=payload.remember)
     _set_cookie(response, token, payload.remember)
+    from datetime import datetime, timezone as _tz
+    await db.users.update_one({"id": user["id"]}, {"$set": {"last_login_at": datetime.now(_tz.utc).isoformat()}})
     await log_event(db, event="login.success", user_id=user["id"], username=user["username"], ip=ip, user_agent=ua)
     return {
         "token": token,
         "user": {
             "id": user["id"], "username": user["username"], "email": user["email"],
             "name": user.get("name"), "role": user.get("role", "admin"),
+            "is_active": user.get("is_active", True),
             "created_at": user["created_at"],
             "must_change_password": force_change,
         },
@@ -119,6 +122,19 @@ async def update_profile(request: Request, payload: ProfileUpdatePayload, user: 
     update = {k: v for k, v in payload.model_dump().items() if v is not None}
     if not update:
         return user
+    # Normalize + uniqueness checks
+    if "username" in update:
+        update["username"] = update["username"].strip().lower()
+        if not update["username"]:
+            raise HTTPException(400, "Username required")
+        clash = await db.users.find_one({"username": update["username"], "id": {"$ne": user["id"]}})
+        if clash:
+            raise HTTPException(400, "Username already taken")
+    if "email" in update:
+        update["email"] = str(update["email"]).strip().lower()
+        clash = await db.users.find_one({"email": update["email"], "id": {"$ne": user["id"]}})
+        if clash:
+            raise HTTPException(400, "Email already in use")
     await db.users.update_one({"id": user["id"]}, {"$set": update})
     updated = await db.users.find_one({"id": user["id"]}, {"_id": 0, "password_hash": 0})
     await log_event(db, event="profile.updated", user_id=user["id"], username=user["username"],

@@ -1,6 +1,6 @@
 """Devices routes."""
 from fastapi import APIRouter, HTTPException, Depends, Request
-from auth import get_current_user
+from auth import get_current_user, require_min_role, require_role
 from models import Device, DeviceIn
 
 router = APIRouter(prefix="/devices", tags=["devices"], dependencies=[Depends(get_current_user)])
@@ -22,7 +22,7 @@ async def list_devices():
 
 
 @router.post("")
-async def create_device(payload: DeviceIn):
+async def create_device(payload: DeviceIn, user: dict = Depends(require_min_role("collaborator"))):
     from server import db
     doc = Device(**payload.model_dump()).model_dump()
     await db.devices.insert_one(doc)
@@ -44,7 +44,7 @@ async def get_device(device_id: str):
 
 
 @router.put("/{device_id}")
-async def update_device(device_id: str, payload: DeviceIn):
+async def update_device(device_id: str, payload: DeviceIn, user: dict = Depends(require_min_role("collaborator"))):
     from server import db
     update = payload.model_dump()
     res = await db.devices.update_one({"id": device_id}, {"$set": update})
@@ -54,7 +54,7 @@ async def update_device(device_id: str, payload: DeviceIn):
 
 
 @router.delete("/{device_id}")
-async def delete_device(device_id: str, request: Request, user: dict = Depends(get_current_user)):
+async def delete_device(device_id: str, request: Request, user: dict = Depends(require_role("admin"))):
     from server import db
     from audit import log_event
     from auth import client_ip, user_agent

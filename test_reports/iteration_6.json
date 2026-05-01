@@ -1,0 +1,52 @@
+{
+  "summary": "Iteration 6 — Validated RBAC (admin/collaborator/spectator), profit tracking, new templates (NAS Setup, Server Setup, General Network Setup, UniFi Setup, Laptop Repair, Laptop Cleaning, Console Cleaning) + legacy retention, Users CRUD with last-admin guard, profile username update, MoneyInput clear-to-0 behavior, Reports page, and nav gating. Backend: 20 new tests in test_rbac_iter6.py — all PASS. Regression on test_audit_new.py (6/6) + test_security_card.py (16/16) + backend_test.py (38/40) — 80 passed, 2 pre-existing failures unrelated to this iteration (admin email changed in DB from admin@houstonlab.local to JanPilat.bp@gmail.com; legacy test_login_with_email and hard-coded email assertion in test_login_with_username broke). Frontend: sidebar shows Finance/Audit/Users & Roles/Reports for admin; /users add dialog opens with user-username/user-email/user-name/user-password/user-role/user-active (singular prefix); /reports renders no 'internal_notes' text; JobDetail Finance tab shows Internal costs section + parts_cost/other_costs/Profit summary; MoneyInput commits empty value to '0' on blur. Report button on JobDetail present.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "test_credentials / DB state", "issue": "Admin email has been changed from admin@houstonlab.local to JanPilat.bp@gmail.com in the DB (likely via the new profile-username/email editing feature). backend_test.py::test_login_with_email and test_login_with_username's email assertion both fail because of hard-coded 'admin@houstonlab.local'. The legacy test should either be updated to read the admin email from /auth/me first, or the /app/memory/test_credentials.md should be refreshed to reflect the new email."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/jobs list", "issues": ["Recharts warning in console: 'The width(-1) and height(-1) of chart should be greater than 0' — dashboard chart container renders with no dimensions on first paint. Cosmetic, not broken."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_rbac_iter6.py",
+    "/app/backend/tests/backend_test.py",
+    "/app/backend/tests/test_audit_new.py",
+    "/app/backend/tests/test_security_card.py",
+    "/app/test_reports/pytest/test_rbac_iter6.xml",
+    "/app/test_reports/pytest/regression_iter6.xml"
+  ],
+  "action_items": [
+    "Minor doc fix: update /app/memory/test_credentials.md — admin email is now JanPilat.bp@gmail.com (not admin@houstonlab.local). Alternatively revert the admin email via /auth/profile to keep legacy tests green.",
+    "Consider fixing backend_test.py::TestAuth::test_login_with_username/email to dynamically read the admin identity rather than hard-coding 'admin@houstonlab.local'.",
+    "Review request description references dialog testids as 'users-username/email/name/password/role/active' but the code uses singular 'user-username' etc. (only the Add button and table use plural 'users-*'). Either update the description or rename testids for consistency.",
+    "Optional: surface a small border/loading state on Recharts containers to silence the width(-1)/height(-1) warnings on first paint.",
+    "Carry-over (not introduced this iter): CORS allow_origins=['*'] with allow_credentials=True; deprecated @app.on_event; empty-catch swallowing /audit/summary errors in SecurityCard."
+  ],
+  "critical_code_review_comments": [
+    "dashboard_routes._strip_finance_for_role hard-codes currency='CZK' for the stripped profit key — this drops the configured settings.currency. Use settings.currency or mirror payload.revenue.currency consistently.",
+    "users_routes.update_user uses Pydantic .model_dump() to derive update fields — because UserUpdatePayload fields default to None, any None value is correctly skipped BUT a client passing 'role': null will silently no-op instead of 400. Acceptable, but worth documenting.",
+    "dashboard_routes._job_profit is defined but never used (only _job_internal_cost + inline paid-internal compute); either remove or use it in /dashboard/finance to avoid drift — currently /stats uses _job_profit and /finance inlines the formula, so they could diverge.",
+    "users_routes._public is equivalent to find_one's projection {'_id':0,'password_hash':0} — listing already projects; post-create and post-update use _public on the in-memory doc. OK but duplication can be removed.",
+    "Reports page sheet HTML still contains the string 'Secrets hidden in customer report.' as a user-facing notice — this is a correct, intentional label (not a leak). When asserting 'no secret leak' in automation, match on actual secret values/labels via job.secrets[] rather than the word 'secret'.",
+    "MoneyInput select-all-on-focus should only fire when value==0 per PRD — verified: a field with value=3500 appended '9' (no select-all) which is correct; empty + blur commits to '0' which is correct."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_rbac_iter6.py (NEW — 20 tests covering RBAC + profit + templates + users CRUD + last-admin guard + profile username)"
+  ],
+  "success_rate": {
+    "backend": "97.5% (80/82 — 20/20 iter6 + 6/6 audit + 16/16 security-card + 38/40 backend_test; 2 pre-existing failures due to admin email DB drift, not code regression)",
+    "frontend": "100% on iter6 scope: admin sidebar shows Finance/Audit/Users & Roles/Reports; /users add dialog opens; JobDetail Finance tab renders Internal costs + Parts cost/Other costs/Profit; Report button on JobDetail; Reports page renders (no internal_notes leak); MoneyInput clear-and-blur commits to 0; Settings username input is editable (not disabled)."
+  },
+  "test_credentials": "admin / ChangeMe123! — verified 200 at end of run (TestZRestore::test_admin_password_unchanged PASSED). Note: admin email in DB is 'JanPilat.bp@gmail.com' not 'admin@houstonlab.local'.",
+  "seed_data_creation": "test_rbac_iter6.py creates 2 TEST_* users per module run (collab + spectator) + 1 temporary second-admin for last-admin-guard test + 1 TEST_collab_job + 1 TEST_secret. All cleaned up at teardown. Audit rows (user.created/updated/role_changed/password_reset/deleted, job.created/finance_updated/deleted, secret.created/deleted) remain in the log as expected.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All iter6 backend RBAC/profit/users/templates flows green. The two backend_test.py auth failures are DATA issues (admin email drifted), not code. Update test_credentials.md or fix the test to read admin email dynamically. The Users dialog uses singular 'user-*' testid prefix (not 'users-*') — use user-username/user-email/user-name/user-password/user-role/user-active when writing Playwright. MoneyInput select-all-on-focus only triggers when value==0 (not for non-zero values). Reports page contains the literal text 'Secrets hidden' as an intentional notice — do NOT flag that as a leak.",
+  "rca of the issue": "backend_test.py auth failures RCA: admin user document in MongoDB has email='JanPilat.bp@gmail.com' instead of seed default 'admin@houstonlab.local'. Either the seed_admin path updates email on each run, or an admin changed it via the new /api/auth/profile email-update flow (this iteration also allows username updates — email was already editable in prior iters). Reproduction: GET /api/auth/me with admin token returns email='JanPilat.bp@gmail.com'. Mitigation: (a) revert via admin_client.post('/api/auth/profile', json={'email':'admin@houstonlab.local'}), OR (b) refactor legacy tests to `me = client.get('/auth/me').json(); assert me['username']=='admin'` (don't hardcode email), OR (c) update /app/memory/test_credentials.md to reflect the new email."
+}

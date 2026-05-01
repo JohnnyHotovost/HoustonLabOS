@@ -21,7 +21,30 @@ class UserPublic(BaseModel):
     email: EmailStr
     name: Optional[str] = None
     role: str = "admin"
+    is_active: bool = True
+    last_login_at: Optional[str] = None
     created_at: str
+
+
+class UserCreatePayload(BaseModel):
+    username: str
+    email: EmailStr
+    password: str
+    name: Optional[str] = None
+    role: str = "collaborator"  # admin | collaborator | spectator
+    is_active: bool = True
+
+
+class UserUpdatePayload(BaseModel):
+    username: Optional[str] = None
+    email: Optional[EmailStr] = None
+    name: Optional[str] = None
+    role: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+class AdminResetPasswordPayload(BaseModel):
+    new_password: str
 
 
 class LoginPayload(BaseModel):
@@ -36,6 +59,7 @@ class ChangePasswordPayload(BaseModel):
 
 
 class ProfileUpdatePayload(BaseModel):
+    username: Optional[str] = None
     name: Optional[str] = None
     email: Optional[EmailStr] = None
 
@@ -134,6 +158,9 @@ class FinanceInfo(BaseModel):
     labor_price: float = 0
     parts_price: float = 0
     discount: float = 0
+    # Internal cost tracking (never shown to customers / spectators).
+    parts_cost: float = 0
+    other_costs: float = 0
     currency: str = "CZK"
     payment_status: str = "Unpaid"  # Unpaid, Partial, Paid
     payment_method: Optional[str] = None  # Cash, Bank Transfer, Card, Other

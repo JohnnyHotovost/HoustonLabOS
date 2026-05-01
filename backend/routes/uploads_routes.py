@@ -7,7 +7,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends, Request
 from fastapi.responses import FileResponse
-from auth import get_current_user, client_ip, user_agent
+from auth import get_current_user, client_ip, user_agent, require_min_role
 from audit import log_event
 from models import now_iso
 
@@ -57,7 +57,7 @@ def _mime_ok(mime: str) -> bool:
     return any(mime.startswith(p) for p in ALLOWED_MIME_PREFIXES)
 
 
-@router.post("", dependencies=[Depends(get_current_user)])
+@router.post("", dependencies=[Depends(require_min_role("collaborator"))])
 async def upload_file(
     request: Request,
     file: UploadFile = File(...),
@@ -118,8 +118,8 @@ async def upload_file(
     return attachment
 
 
-@router.delete("/{attachment_id}", dependencies=[Depends(get_current_user)])
-async def delete_attachment(attachment_id: str, request: Request, job_id: str | None = None, user: dict = Depends(get_current_user)):
+@router.delete("/{attachment_id}", dependencies=[Depends(require_min_role("collaborator"))])
+async def delete_attachment(attachment_id: str, request: Request, job_id: str | None = None, user: dict = Depends(require_min_role("collaborator"))):
     from server import db
     fname = None
     if job_id:

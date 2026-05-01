@@ -15,6 +15,8 @@ import { fmtMoney, fmtDateTime, fmtRelative, STATUS_OPTIONS, PRIORITY_OPTIONS, P
 import { toast } from "sonner";
 import { EmptyState } from "../components/houston/EmptyState";
 import AuthImage from "../components/houston/AuthImage";
+import MoneyInput from "../components/houston/MoneyInput";
+import { useAuth } from "../context/AuthContext";
 
 const ENTRY_DOT = {
     "Note": "bg-zinc-500", "Diagnosis": "bg-blue-400", "Repair": "bg-emerald-400",
@@ -86,6 +88,9 @@ export default function JobDetail() {
                             <SelectTrigger data-testid="job-status-quick" className="w-[180px] bg-[var(--hl-card)] border-[var(--hl-border)]"><SelectValue /></SelectTrigger>
                             <SelectContent>{STATUS_OPTIONS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
                         </Select>
+                        <Button data-testid="job-report-btn" variant="outline" className="border-[var(--hl-border)] bg-[var(--hl-card)] hover:bg-[var(--hl-elevated)]" onClick={() => navigate(`/reports/job/${id}`)}>
+                            <FileText className="h-4 w-4 mr-2" /> Report
+                        </Button>
                         <Button data-testid="job-edit-btn" variant="outline" className="border-[var(--hl-border)] bg-[var(--hl-card)] hover:bg-[var(--hl-elevated)]" onClick={() => navigate(`/jobs/${id}/edit`)}>
                             <Pencil className="h-4 w-4 mr-2" /> Edit
                         </Button>
@@ -445,9 +450,13 @@ function ClientCard({ c }) {
 }
 
 function FinanceTab({ job, reload }) {
+    const { user } = useAuth();
     const [f, setF] = useState({ ...job.finance });
     const [saving, setSaving] = useState(false);
     const total = (f.labor_price || 0) + (f.parts_price || 0) - (f.discount || 0);
+    const internalCost = (f.parts_cost || 0) + (f.other_costs || 0);
+    const profit = (f.paid_amount || 0) - internalCost;
+    const isSpectator = user?.role === "spectator";
     const save = async () => {
         setSaving(true);
         try {
@@ -456,19 +465,40 @@ function FinanceTab({ job, reload }) {
             reload();
         } finally { setSaving(false); }
     };
+    if (isSpectator) {
+        return <div className="text-sm text-zinc-500">Finance details are not available for your role.</div>;
+    }
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
             <div className="lg:col-span-2 hl-card p-6 space-y-5">
-                <div className="text-base font-medium text-white">Pricing</div>
+                <div className="text-base font-medium text-white">Customer pricing</div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                    {["labor_price", "parts_price", "discount"].map((k) => (
+                    {[
+                        { k: "labor_price", label: "Labor price" },
+                        { k: "parts_price", label: "Parts price" },
+                        { k: "discount", label: "Discount" },
+                    ].map(({ k, label }) => (
                         <div key={k} className="space-y-2">
-                            <Label className="text-xs hl-mono uppercase tracking-widest text-zinc-500">{k.replace("_", " ")}</Label>
-                            <Input data-testid={`finance-${k}`} type="number" value={f[k] ?? 0} onChange={(e) => setF({ ...f, [k]: Number(e.target.value || 0) })} className="bg-[var(--hl-input)] border-[var(--hl-border)]" />
+                            <Label className="text-xs hl-mono uppercase tracking-widest text-zinc-500">{label}</Label>
+                            <MoneyInput data-testid={`finance-${k}`} value={f[k] ?? 0} onChange={(v) => setF({ ...f, [k]: v })} className="bg-[var(--hl-input)] border-[var(--hl-border)]" />
                         </div>
                     ))}
                 </div>
-                <div className="text-base font-medium text-white">Payment</div>
+
+                <div className="text-base font-medium text-white pt-2">Internal costs <span className="text-xs text-zinc-500 hl-mono">// not shown to customer</span></div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    {[
+                        { k: "parts_cost", label: "Parts purchase cost" },
+                        { k: "other_costs", label: "Other costs" },
+                    ].map(({ k, label }) => (
+                        <div key={k} className="space-y-2">
+                            <Label className="text-xs hl-mono uppercase tracking-widest text-zinc-500">{label}</Label>
+                            <MoneyInput data-testid={`finance-${k}`} value={f[k] ?? 0} onChange={(v) => setF({ ...f, [k]: v })} className="bg-[var(--hl-input)] border-[var(--hl-border)]" />
+                        </div>
+                    ))}
+                </div>
+
+                <div className="text-base font-medium text-white pt-2">Payment</div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                     <div className="space-y-2">
                         <Label className="text-xs hl-mono uppercase tracking-widest text-zinc-500">Status</Label>
@@ -486,7 +516,7 @@ function FinanceTab({ job, reload }) {
                     </div>
                     <div className="space-y-2">
                         <Label className="text-xs hl-mono uppercase tracking-widest text-zinc-500">Paid amount</Label>
-                        <Input type="number" value={f.paid_amount ?? 0} onChange={(e) => setF({ ...f, paid_amount: Number(e.target.value || 0) })} className="bg-[var(--hl-input)] border-[var(--hl-border)]" />
+                        <MoneyInput data-testid="finance-paid_amount" value={f.paid_amount ?? 0} onChange={(v) => setF({ ...f, paid_amount: v })} className="bg-[var(--hl-input)] border-[var(--hl-border)]" />
                     </div>
                 </div>
                 <div className="space-y-2">
@@ -499,12 +529,23 @@ function FinanceTab({ job, reload }) {
                     </Button>
                 </div>
             </div>
-            <div className="hl-card p-6 h-fit">
-                <div className="hl-mono text-[10px] uppercase tracking-widest text-zinc-500 mb-2">Total</div>
-                <div className="text-3xl hl-mono text-white">{fmtMoney(total)}</div>
-                <div className="hl-divider my-4" />
+            <div className="hl-card p-6 h-fit space-y-3">
+                <div>
+                    <div className="hl-mono text-[10px] uppercase tracking-widest text-zinc-500 mb-1">Customer total</div>
+                    <div data-testid="finance-total" className="text-3xl hl-mono text-white">{fmtMoney(total)}</div>
+                </div>
+                <div className="hl-divider my-2" />
+                <div className="flex items-center justify-between">
+                    <span className="text-xs hl-mono uppercase tracking-widest text-zinc-500">Internal cost</span>
+                    <span className="hl-mono text-sm text-zinc-300">{fmtMoney(internalCost)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                    <span className="text-xs hl-mono uppercase tracking-widest text-zinc-500">Profit</span>
+                    <span data-testid="finance-profit" className={`hl-mono text-lg ${profit >= 0 ? "text-emerald-300" : "text-red-300"}`}>{fmtMoney(profit)}</span>
+                </div>
+                <div className="hl-divider my-2" />
                 <PaymentBadge value={f.payment_status} />
-                {f.paid_amount > 0 && <div className="mt-3 text-sm text-zinc-400">Paid: <span className="hl-mono text-zinc-200">{fmtMoney(f.paid_amount)}</span></div>}
+                {f.paid_amount > 0 && <div className="mt-2 text-sm text-zinc-400">Paid: <span className="hl-mono text-zinc-200">{fmtMoney(f.paid_amount)}</span></div>}
                 {total - (f.paid_amount || 0) > 0 && f.payment_status !== "Paid" && <div className="mt-1 text-sm text-zinc-400">Outstanding: <span className="hl-mono text-red-300">{fmtMoney(total - (f.paid_amount || 0))}</span></div>}
             </div>
         </div>

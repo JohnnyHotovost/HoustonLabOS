@@ -1,6 +1,6 @@
 """Jobs routes — full CRUD + nested timeline/checklist/finance/secrets/attachments."""
 from fastapi import APIRouter, HTTPException, Depends, Request
-from auth import get_current_user, client_ip, user_agent
+from auth import get_current_user, client_ip, user_agent, require_min_role, require_role
 from audit import log_event
 from models import (
     Job, JobIn, ChecklistItem, ChecklistItemIn, TimelineEntry, TimelineEntryIn,
@@ -62,7 +62,7 @@ async def list_jobs(status: str | None = None, category: str | None = None,
 
 
 @router.post("")
-async def create_job(payload: JobIn):
+async def create_job(payload: JobIn, user: dict = Depends(require_min_role("collaborator"))):
     from server import db
     code = await _next_code(db)
     job = Job(**payload.model_dump(), code=code)
@@ -93,7 +93,7 @@ async def get_job(job_id: str):
 
 
 @router.put("/{job_id}")
-async def update_job(job_id: str, payload: JobIn):
+async def update_job(job_id: str, payload: JobIn, user: dict = Depends(require_min_role("collaborator"))):
     from server import db
     update = payload.model_dump()
     update["updated_at"] = now_iso()
@@ -105,7 +105,7 @@ async def update_job(job_id: str, payload: JobIn):
 
 
 @router.delete("/{job_id}")
-async def delete_job(job_id: str, request: Request, user: dict = Depends(get_current_user)):
+async def delete_job(job_id: str, request: Request, user: dict = Depends(require_role("admin"))):
     from server import db
     j = await db.jobs.find_one({"id": job_id}, {"_id": 0, "title": 1, "code": 1})
     res = await db.jobs.delete_one({"id": job_id})
@@ -119,7 +119,7 @@ async def delete_job(job_id: str, request: Request, user: dict = Depends(get_cur
 
 # --- Checklist ---
 @router.post("/{job_id}/checklist")
-async def add_checklist(job_id: str, payload: ChecklistItemIn):
+async def add_checklist(job_id: str, payload: ChecklistItemIn, user: dict = Depends(require_min_role("collaborator"))):
     from server import db
     item = ChecklistItem(**payload.model_dump()).model_dump()
     res = await db.jobs.update_one({"id": job_id}, {"$push": {"checklist": item}, "$set": {"updated_at": now_iso()}})
@@ -129,7 +129,7 @@ async def add_checklist(job_id: str, payload: ChecklistItemIn):
 
 
 @router.put("/{job_id}/checklist/{item_id}")
-async def update_checklist(job_id: str, item_id: str, payload: dict):
+async def update_checklist(job_id: str, item_id: str, payload: dict, user: dict = Depends(require_min_role("collaborator"))):
     from server import db
     set_doc = {}
     for k in ("text", "done", "note"):
@@ -149,7 +149,7 @@ async def update_checklist(job_id: str, item_id: str, payload: dict):
 
 
 @router.delete("/{job_id}/checklist/{item_id}")
-async def delete_checklist(job_id: str, item_id: str):
+async def delete_checklist(job_id: str, item_id: str, user: dict = Depends(require_min_role("collaborator"))):
     from server import db
     await db.jobs.update_one({"id": job_id}, {"$pull": {"checklist": {"id": item_id}}, "$set": {"updated_at": now_iso()}})
     return {"ok": True}
@@ -157,7 +157,7 @@ async def delete_checklist(job_id: str, item_id: str):
 
 # --- Timeline ---
 @router.post("/{job_id}/timeline")
-async def add_timeline(job_id: str, payload: TimelineEntryIn):
+async def add_timeline(job_id: str, payload: TimelineEntryIn, user: dict = Depends(require_min_role("collaborator"))):
     from server import db
     entry = TimelineEntry(**payload.model_dump()).model_dump()
     res = await db.jobs.update_one({"id": job_id}, {"$push": {"timeline": entry}, "$set": {"updated_at": now_iso()}})
@@ -167,7 +167,7 @@ async def add_timeline(job_id: str, payload: TimelineEntryIn):
 
 
 @router.delete("/{job_id}/timeline/{entry_id}")
-async def delete_timeline(job_id: str, entry_id: str):
+async def delete_timeline(job_id: str, entry_id: str, user: dict = Depends(require_min_role("collaborator"))):
     from server import db
     await db.jobs.update_one({"id": job_id}, {"$pull": {"timeline": {"id": entry_id}}, "$set": {"updated_at": now_iso()}})
     return {"ok": True}
@@ -175,7 +175,7 @@ async def delete_timeline(job_id: str, entry_id: str):
 
 # --- Finance ---
 @router.put("/{job_id}/finance")
-async def update_finance(job_id: str, payload: FinanceInfo):
+async def update_finance(job_id: str, payload: FinanceInfo, user: dict = Depends(require_min_role("collaborator"))):
     from server import db
     res = await db.jobs.update_one({"id": job_id}, {"$set": {"finance": payload.model_dump(), "updated_at": now_iso()}})
     if res.matched_count == 0:
@@ -185,7 +185,7 @@ async def update_finance(job_id: str, payload: FinanceInfo):
 
 # --- Secrets ---
 @router.post("/{job_id}/secrets")
-async def add_secret(job_id: str, payload: SecretIn, request: Request, user: dict = Depends(get_current_user)):
+async def add_secret(job_id: str, payload: SecretIn, request: Request, user: dict = Depends(require_min_role("collaborator"))):
     from server import db
     item = {
         "id": new_id(),
@@ -205,8 +205,8 @@ async def add_secret(job_id: str, payload: SecretIn, request: Request, user: dic
 
 
 @router.post("/{job_id}/secrets/{secret_id}/reveal")
-async def reveal_secret(job_id: str, secret_id: str, body: dict, request: Request, user: dict = Depends(get_current_user)):
-    """Reveal a secret. Requires admin password confirmation."""
+async def reveal_secret(job_id: str, secret_id: str, body: dict, request: Request, user: dict = Depends(require_role("admin"))):
+    """Reveal a secret. Admin role + admin password confirmation required."""
     from server import db
     from auth import verify_password
     password = body.get("password", "")
@@ -230,7 +230,7 @@ async def reveal_secret(job_id: str, secret_id: str, body: dict, request: Reques
 
 
 @router.delete("/{job_id}/secrets/{secret_id}")
-async def delete_secret(job_id: str, secret_id: str, request: Request, user: dict = Depends(get_current_user)):
+async def delete_secret(job_id: str, secret_id: str, request: Request, user: dict = Depends(require_role("admin"))):
     from server import db
     await db.jobs.update_one({"id": job_id}, {"$pull": {"secrets": {"id": secret_id}}, "$set": {"updated_at": now_iso()}})
     await log_event(db, event="secret.deleted", user_id=user["id"], username=user["username"],

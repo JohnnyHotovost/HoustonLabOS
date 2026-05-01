@@ -115,3 +115,38 @@ def client_ip(request: Request) -> str:
 
 def user_agent(request: Request) -> str:
     return request.headers.get("user-agent", "-")
+
+
+# --- Role-based access control ---
+ROLES = ("admin", "collaborator", "spectator")
+ROLE_RANK = {"admin": 3, "collaborator": 2, "spectator": 1}
+
+
+def role_at_least(user_role: str, required: str) -> bool:
+    return ROLE_RANK.get(user_role, 0) >= ROLE_RANK.get(required, 0)
+
+
+def require_role(*roles: str):
+    """FastAPI dependency factory — accept the listed roles."""
+    allowed = set(roles)
+
+    async def _dep(user: dict = Depends(get_current_user)) -> dict:
+        if (user.get("role") or "spectator") not in allowed:
+            raise HTTPException(status_code=403, detail="Insufficient permissions")
+        if user.get("is_active") is False:
+            raise HTTPException(status_code=403, detail="Account is deactivated")
+        return user
+
+    return _dep
+
+
+def require_min_role(required: str):
+    """FastAPI dependency — require at least the given role rank."""
+    async def _dep(user: dict = Depends(get_current_user)) -> dict:
+        if not role_at_least(user.get("role") or "spectator", required):
+            raise HTTPException(status_code=403, detail="Insufficient permissions")
+        if user.get("is_active") is False:
+            raise HTTPException(status_code=403, detail="Account is deactivated")
+        return user
+
+    return _dep

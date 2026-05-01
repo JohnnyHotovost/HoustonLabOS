@@ -143,3 +143,13 @@ input, textarea, select { background-color: var(--hl-input); }
 /* secret blur */
 .secret-blur { filter: blur(6px); transition: filter 200ms ease; user-select: none; }
 .secret-blur.revealed { filter: blur(0); }
+
+/* --- Print: Job Sheet / Customer Report --------------------------------- */
+@media print {
+    @page { margin: 18mm; }
+    /* Hide app shell + toaster + buttons during print */
+    aside, .sonner, [data-testid="topbar"], [data-testid="must-change-password-banner"] { display: none !important; }
+    body { background: white !important; color: #18181b !important; }
+    .report-sheet { background: white !important; color: #18181b !important; box-shadow: none !important; border: none !important; }
+    .report-sheet a { color: inherit; text-decoration: none; }
+}
