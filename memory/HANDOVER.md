@@ -1,7 +1,7 @@
 # HoustonLab OS — Handover Document
 
 **Last updated:** May 1, 2026 (iteration 6)
-**Preview URL:** https://technical-hub-2.preview.emergentagent.com
+**Preview URL:** https://houstonlab-os.preview.emergentagent.com
 **Purpose of this document:** enough context that another agent (or human) can safely continue the project without breaking existing functionality.
 
 ---

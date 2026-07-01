@@ -1,0 +1,130 @@
+<analysis>**original_problem_statement**: 
+Build HoustonLab OS, a premium, secure, self-hosted full-stack internal operating system for a technical service brand. Recent requests focused on enhancing financial features (profit tracking, easy-clear numeric inputs), adding Role-Based Access Control (Admin, Collaborator, Spectator) with user management, splitting/refining dynamic templates (NAS/Server, Networking/UniFi), and adding a printable Customer Job Sheet / Report generator.
+PRODUCT REQUIREMENTS: React frontend (dark graphite theme, shadcn), FastAPI backend, MongoDB, Docker Compose, English/Czech localization, and strict security hardening. DO NOT redesign the app.
+
+**User's preferred language**: English (INSTRUCT next agent to respond in English only)
+
+**what currently exists?**: 
+A highly functional, secure MVP is complete. It features dynamic form rendering for jobs/clients/devices, full i18n support, encrypted secrets (AES-256-GCM), an Audit Log, a Dashboard/Finance view with custom date ranges, and a new complete Role-Based Access Control (RBAC) system. A printable Job Sheet generator and a  UX component have just been integrated.
+
+**Last working item**:
+    - Last item agent was working: Generating a highly detailed handover document at  containing 15 comprehensive sections outlining the app's architecture, rules, and status, as specifically requested by the user.
+    - Status: COMPLETED
+    - Agent Testing Done: N/A (Documentation task)
+    - Which testing method agent to use? NA
+    - User Testing Done: N
+
+**All Pending/In progress Issue list**:  
+  Issue 1: Test Data Drift in Legacy Tests (P2)
+     - Attempted fixes: Updated  to reflect proper usernames/emails.
+     - Next debug checklist: Check . Refactor legacy tests in  to use  to get the user ID/email instead of hardcoding , which fails now that the DB relies on  or username .
+     - Why fix this issue and what will be achieved with the fix? Achieves 100% passing test suite (currently 80/82 pass).
+     - Status: TESTING PENDING
+     - Is recurring issue? N
+     - Should Test frontend/backend/both after fix? backend
+     - Blocked on other issue: None
+
+**In progress Task List**: 
+  *None. The agent successfully completed all 8 requested features and the handover document.*
+
+**Upcoming and Future Tasks**
+    Upcoming Tasks:
+    - Implement server-side PDF generation for the Customer Job Sheet (currently relies on browser print dialog/CSS) (P1).
+    - Add a Top profit categories widget on the Dashboard (last 6 months, highlighted in green) (P2).
+    Future Tasks:
+    - Daily digest email (yesterday's stats summary) using Resend or SMTP via a Cron job calling  (P2).
+    - Update  or deployment docs with strict security guidelines (LAN/VPN access recommendation, backup strategies for the AES encryption key) (P1).
+
+**Completed work in this session**
+- Built Audit Log viewer UI & Backend range reordering (DONE)
+- Added Dashboard Security Card +  tracking (DONE)
+- Finance input UX ( component) to allow clearing zero values easily (DONE)
+- Profit tracking (Backend endpoints & Frontend Job/Dashboard/Finance views) (DONE)
+- User accounts, username editing, roles (Admin/Collaborator/Spectator) w/ Backend RBAC enforcement (DONE)
+- Split NAS/Server and Networking/UniFi templates + added Laptop/Console specific templates (DONE)
+- Printable Job Sheet / Customer Report generator (DONE)
+- Created comprehensive  (DONE)
+
+**Earlier issues found/mentioned but not fixed**
+   - Issue 1: Legacy test suite failures due to email/data drift (noted above).
+
+**Known issue recurrence from previous fork**
+  - None
+
+**Code Architecture**
+
+
+**Key Technical Concepts**
+Frontend: React, Tailwind CSS, shadcn/ui, i18n
+Backend: FastAPI, MongoDB, AES-256-GCM, Argon2id, Role-Based Access Control (RBAC)
+
+**key DB schema**
+  - users: 
+  - templates: 
+  - jobs: 
+  - audit_log: 
+
+**changes in tech stack**
+  - No new dependencies added, but deep utilization of RBAC logic and print-specific CSS media queries.
+
+**All files of reference** 
+  -  (CRITICAL: Read this file. The agent generated it specifically for you to understand the app state and strict boundaries).
+  -  &  (New User/Role management)
+  -  (New Job Sheet Generator)
+  -  (New numeric input wrapper)
+  -  (Latest test report)
+
+**Areas that need refactoring**: 
+- Legacy tests inside  to fix the 2 failing data-drift tests.
+
+**key api endpoints**
+-  (CRUD users, admin only)
+-  (Update self profile)
+-  &  (Now return  metrics, restricted to Admin/Collaborator)
+-  
+
+**Critical Info for New Agent** 
+- A comprehensive  was requested by the user and created in the last step. **You MUST read this file.** It contains strict rules about what NOT to touch (UI design, encryption patterns, audit naming, etc.) and explicit role behaviors.
+- The RBAC system is fully enforced on the backend:
+  - Admin: Full access
+  - Collaborator: Can manage jobs/clients/devices/files, cannot manage users/settings/secrets, cannot delete.
+  - Spectator: Read-only. Cannot see finance/profit metrics, cannot reveal secrets.
+- NEVER redesign the app. Keep the dark graphite, minimalist UI style.
+
+**documents and test reports created in this job**
+  - 
+  - 
+  - 
+  - 
+
+**Last 10 User Messages and any pending HUMAN messages** 
+ - *Message 509*: Before we continue, create a complete handover document for this project... Include 15 sections... (Status: COMPLETED).
+ - *Message 505*: is it posible to change the agent model rn? (Status: COMPLETED. Support agent answered).
+ - *Message 503*: whats the login? (Status: COMPLETED).
+ - *Message 220*: User answers clarify secret visibility for Collaborators and Finance visibility for Spectators. (Status: COMPLETED).
+ - *Message 217*: User provides a massive 8-point checklist of features (Roles, Finance UX, Profit, Templates, Job Sheet). (Status: COMPLETED).
+
+**Project Health Check:**
+- All endpoints working. RBAC tested via curl and passing. 2 legacy unit tests are Broken (data drift).
+
+**3rd Party Integrations** 
+- None. Fully self-hosted system.
+
+**Testing status**
+  - Testing agent used after significant changes: YES
+  - Troubleshoot agent used after agent stuck in loop: NO
+  - Test files created: 
+  - Known regressions: 2 legacy unit tests failed because they expect  instead of the newly enforced db state.
+
+**Credentials to test flow:**
+Check  (Historically: admin / ChangeMe123!).
+
+**What agent forgot to execute**
+The agent completed all features perfectly. No missed requests.
+
+**Debugging checklist for current issue**
+    Issue: Legacy test suite data drift (2 tests failing)
+    Backend files to check: 
+      -  (See failure logs)
+      -  or similar
+    To Fix: Ensure tests query the DB or use  to get the valid user email rather than hardcoding.</analysis>
