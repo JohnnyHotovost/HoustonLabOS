@@ -39,6 +39,13 @@ async def _purge_generated_test_users(db):
 
 
 async def _setup():
+    # Safety: never provision the test admin against a production database.
+    # conftest.py is only ever imported by pytest, but guard explicitly in case
+    # the suite is pointed at a production DB by mistake.
+    if os.environ.get("APP_ENV", "development").lower() == "production":
+        pytest.skip("Refusing to provision qa_admin test account against a production environment.")
+    if not os.environ.get("PYTEST_CURRENT_TEST") and "pytest" not in sys.modules:
+        return
     mc = AsyncIOMotorClient(os.environ["MONGO_URL"])
     db = mc[os.environ["DB_NAME"]]
     try:

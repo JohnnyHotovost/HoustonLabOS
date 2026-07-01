@@ -7,6 +7,9 @@ from models import (
     FinanceInfo, SecretIn, SecretItem, new_id, now_iso,
 )
 from crypto_utils import encrypt_secret, decrypt_secret, mask_secret
+from fastapi import Query
+from fastapi.responses import Response
+from report_pdf import render_report_pdf
 
 router = APIRouter(prefix="/jobs", tags=["jobs"], dependencies=[Depends(get_current_user)])
 
@@ -90,6 +93,36 @@ async def get_job(job_id: str):
     if j.get("template_id"):
         j["template"] = await db.templates.find_one({"id": j["template_id"]}, {"_id": 0})
     return _redact_secrets(j)
+
+
+@router.get("/{job_id}/report.pdf")
+async def job_report_pdf(
+    job_id: str,
+    prices: bool = Query(True),
+    checklist: bool = Query(True),
+    photos: bool = Query(True),
+    user: dict = Depends(require_min_role("collaborator")),
+):
+    """Server-side Customer Job Sheet PDF. Mirrors the print view exactly.
+    Secrets / internal_notes / audit data are never included."""
+    from server import db
+    j = await db.jobs.find_one({"id": job_id}, {"_id": 0})
+    if not j:
+        raise HTTPException(404, "Job not found")
+    client = await db.clients.find_one({"id": j["client_id"]}, {"_id": 0}) if j.get("client_id") else None
+    device = await db.devices.find_one({"id": j["device_id"]}, {"_id": 0}) if j.get("device_id") else None
+    settings = await db.settings.find_one({"_id": "app"})
+    opts = {"prices": prices, "checklist": checklist, "photos": photos}
+    pdf = render_report_pdf(j, client, device, settings, opts)
+    fname = f"{(j.get('code') or 'report')}-job-sheet.pdf"
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'inline; filename="{fname}"',
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
 
 
 @router.put("/{job_id}")

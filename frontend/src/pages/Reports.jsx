@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import api, { fileUrl } from "../lib/api";
+import api, { fileUrl, downloadFile } from "../lib/api";
 import { useT } from "../i18n/I18nContext";
 import { fmtMoney, fmtDateTime } from "../lib/format";
 import AuthImage from "../components/houston/AuthImage";
@@ -8,7 +8,8 @@ import { Button } from "../components/ui/button";
 import { Switch } from "../components/ui/switch";
 import { Label } from "../components/ui/label";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select";
-import { Printer, ChevronLeft, FileCheck2 } from "lucide-react";
+import { Printer, ChevronLeft, FileCheck2, Download, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 /**
  * Job Sheet / Customer Report — print-ready document.
@@ -38,6 +39,24 @@ export default function Reports() {
     const [settings, setSettings] = useState(null);
 
     const [opts, setOpts] = useState({ prices: true, checklist: true, photos: true });
+    const [downloading, setDownloading] = useState(false);
+
+    const onDownloadPdf = async () => {
+        if (!job || downloading) return;
+        setDownloading(true);
+        try {
+            const params = new URLSearchParams({
+                prices: String(opts.prices),
+                checklist: String(opts.checklist),
+                photos: String(opts.photos),
+            });
+            await downloadFile(`/jobs/${job.id}/report.pdf?${params.toString()}`, `${job.code}-job-sheet.pdf`);
+        } catch (e) {
+            toast.error("Could not generate the PDF. Please try again.");
+        } finally {
+            setDownloading(false);
+        }
+    };
 
     useEffect(() => {
         (async () => {
@@ -91,6 +110,10 @@ export default function Reports() {
                             <Link to={`/jobs/${paramId}`}><ChevronLeft className="h-4 w-4 mr-1" /> Back to job</Link>
                         </Button>
                     )}
+                    <Button data-testid="report-download-pdf-btn" onClick={onDownloadPdf} disabled={!job || downloading}
+                        variant="outline" className="border-[var(--hl-border)] bg-[var(--hl-card)] gap-2">
+                        {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />} Download PDF
+                    </Button>
                     <Button data-testid="report-print-btn" onClick={() => window.print()} disabled={!job}
                         className="bg-emerald-500 hover:bg-emerald-400 text-zinc-950 gap-2">
                         <Printer className="h-4 w-4" /> Print / PDF

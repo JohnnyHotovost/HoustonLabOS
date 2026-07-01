@@ -82,10 +82,17 @@ Build a premium full-stack web application called **HoustonLab OS** — a privat
   - Repointed all 4 test files (`backend_test.py`, `test_rbac_iter6.py`, `test_audit_new.py`, `test_security_card.py`) to `qa_admin`.
   - Last-admin block-path tests (`test_last_admin_guard_demote/deactivate`) now **skip when other active admins exist** (they mutated the shared session admin before, causing cascade 403s; the block path is only reachable in a single-admin DB).
   - Relaxed brittle exact-seed-count list assertions (clients/devices/jobs `>= N`) to non-empty, since demo data can be legitimately deleted.
+
+### Server-side Customer Job Sheet PDF (iteration 7 — June 2026)
+- New endpoint **`GET /api/jobs/{job_id}/report.pdf`** (`require_min_role("collaborator")`, spectator blocked). Query toggles `prices`/`checklist`/`photos` (default true) mirror the web report switches.
+- `/app/backend/report_pdf.py` — builds an HTML template that reproduces the Reports print view's light-theme layout (same header/client/device/dates/summary/work-performed/checklist/photos/price-summary/footer, same `total = labor + parts − discount`, cs-CZ money formatting) and renders via **WeasyPrint** (`weasyprint==69.0`). Photos embedded as base64 from `UPLOAD_DIR`. Strict exclusions preserved: internal_notes, secrets, audit/system info.
+- Frontend `Reports.jsx`: added a **Download PDF** button (reuses `downloadFile`) alongside the existing browser **Print / PDF** button (print view kept intact).
+- Known minor difference: fonts (web uses Geist/JetBrains Mono; server uses close sans/mono stacks) and page margins may render very slightly differently; layout/sections/labels/data match.
+- Tests: `TestReportPdf` in `test_rbac_iter6.py` (admin+collaborator 200 %PDF, spectator 403, unknown job 404, toggles). Full suite: **85 passed, 2 skipped**.
 - Iterations: `iteration_1.json` (MVP) · `iteration_2.json` (security + frontend) · `iteration_3.json` (custom-range fix) · `iteration_4.json` (audit log + range order + tooltip fix) · `iteration_5.json` (security card + secret.copied) · `iteration_6.json` (RBAC + profit + templates + Users + Reports + MoneyInput).
 
 ## Backlog (P1)
-- Server-side PDF endpoint for the Customer Report (current Print → "Save as PDF" works; user already approved both — server-side is the next step).
+- ~~Server-side PDF endpoint for the Customer Report~~ ✅ DONE (iter7 — `GET /api/jobs/{id}/report.pdf` via WeasyPrint, mirrors print view; browser Print button retained).
 - Photo before/after comparison slider in gallery.
 - Bulk actions in jobs list (set status, archive).
 - Custom template editor UI (currently only via API; admin-only).

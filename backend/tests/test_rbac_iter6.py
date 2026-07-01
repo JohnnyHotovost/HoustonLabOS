@@ -299,6 +299,44 @@ class TestCollaboratorRBAC:
         admin_client.delete(f"{API}/jobs/{jid}")
 
 
+# --------- Customer Job Sheet PDF (server-side) ---------
+class TestReportPdf:
+    def _first_job_id(self, admin_client):
+        jobs = admin_client.get(f"{API}/jobs").json()
+        assert isinstance(jobs, list) and jobs, "need at least one job"
+        return jobs[0]["id"]
+
+    def test_admin_can_download_pdf(self, admin_client):
+        jid = self._first_job_id(admin_client)
+        r = admin_client.get(f"{API}/jobs/{jid}/report.pdf")
+        assert r.status_code == 200, r.text
+        assert r.headers.get("content-type", "").startswith("application/pdf")
+        assert r.content[:5] == b"%PDF-"
+        assert len(r.content) > 1000
+
+    def test_pdf_toggles_change_output(self, admin_client):
+        jid = self._first_job_id(admin_client)
+        full = admin_client.get(f"{API}/jobs/{jid}/report.pdf")
+        stripped = admin_client.get(f"{API}/jobs/{jid}/report.pdf?prices=false&checklist=false&photos=false")
+        assert full.status_code == 200 and stripped.status_code == 200
+        assert stripped.content[:5] == b"%PDF-"
+
+    def test_collaborator_can_download_pdf(self, collab_client, admin_client):
+        jid = self._first_job_id(admin_client)
+        r = collab_client.get(f"{API}/jobs/{jid}/report.pdf")
+        assert r.status_code == 200
+        assert r.content[:5] == b"%PDF-"
+
+    def test_spectator_blocked_from_pdf(self, spec_client, admin_client):
+        jid = self._first_job_id(admin_client)
+        r = spec_client.get(f"{API}/jobs/{jid}/report.pdf")
+        assert r.status_code == 403
+
+    def test_pdf_unknown_job_404(self, admin_client):
+        r = admin_client.get(f"{API}/jobs/does-not-exist/report.pdf")
+        assert r.status_code == 404
+
+
 # --------- Final restore ---------
 class TestZRestore:
     def test_admin_password_unchanged(self):
