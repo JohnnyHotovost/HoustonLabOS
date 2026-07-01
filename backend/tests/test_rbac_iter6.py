@@ -9,8 +9,8 @@ import requests
 
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://houstonlab-os.preview.emergentagent.com").rstrip("/")
 API = f"{BASE_URL}/api"
-ADMIN = "admin"
-ADMIN_PW = "ChangeMe123!"
+ADMIN = "qa_admin"
+ADMIN_PW = "QaAdmin12345!"
 COLLAB_PW = "Collab12345!"
 SPEC_PW = "Spect12345!"
 
@@ -154,12 +154,20 @@ class TestUsersCRUD:
 
     def test_last_admin_guard_demote(self, admin_client):
         me = admin_client.get(f"{API}/auth/me").json()
+        others = [u for u in admin_client.get(f"{API}/users").json()
+                  if u["role"] == "admin" and u.get("is_active") is not False and u["id"] != me["id"]]
+        if others:
+            pytest.skip("Other active admin(s) exist — last-admin block path not reachable without touching a real admin.")
         r = admin_client.put(f"{API}/users/{me['id']}", json={"role": "collaborator"})
         assert r.status_code == 400
         assert "last" in r.text.lower() or "admin" in r.text.lower()
 
     def test_last_admin_guard_deactivate(self, admin_client):
         me = admin_client.get(f"{API}/auth/me").json()
+        others = [u for u in admin_client.get(f"{API}/users").json()
+                  if u["role"] == "admin" and u.get("is_active") is not False and u["id"] != me["id"]]
+        if others:
+            pytest.skip("Other active admin(s) exist — last-admin block path not reachable without touching a real admin.")
         r = admin_client.put(f"{API}/users/{me['id']}", json={"is_active": False})
         assert r.status_code == 400
 
@@ -191,13 +199,13 @@ class TestUsersCRUD:
 # --------- Profile username update ---------
 class TestProfileUsername:
     def test_profile_update_username_and_revert(self, admin_client):
-        r = admin_client.post(f"{API}/auth/profile", json={"username": "admin2"})
+        r = admin_client.post(f"{API}/auth/profile", json={"username": "qa_admin2"})
         assert r.status_code == 200, r.text
-        assert r.json().get("username") == "admin2"
+        assert r.json().get("username") == "qa_admin2"
         # revert
-        r2 = admin_client.post(f"{API}/auth/profile", json={"username": "admin"})
+        r2 = admin_client.post(f"{API}/auth/profile", json={"username": ADMIN})
         assert r2.status_code == 200
-        assert r2.json()["username"] == "admin"
+        assert r2.json()["username"] == ADMIN
 
     def test_profile_username_uniqueness(self, admin_client, test_users):
         taken = test_users["collab"]["username"]

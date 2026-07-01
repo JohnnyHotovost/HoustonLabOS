@@ -13,7 +13,7 @@ assert BASE_URL, "REACT_APP_BACKEND_URL not set"
 def hdr():
     r = requests.post(
         f"{BASE_URL}/api/auth/login",
-        json={"identifier": "admin", "password": "ChangeMe123!", "remember": True},
+        json={"identifier": "qa_admin", "password": "QaAdmin12345!", "remember": True},
         timeout=15,
     )
     assert r.status_code == 200, r.text
